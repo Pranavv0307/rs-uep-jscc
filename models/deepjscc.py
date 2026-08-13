@@ -19,7 +19,8 @@ class DeepJSCCEncoder(nn.Module):
         super().__init__()
         n = image_size * image_size * 3
         self.k = max(1, round(k_over_n * n))
-        c_last = 2 * self.k
+        self._out_spatial = image_size // 4
+        c_last = (2 * self.k) // (self._out_spatial * self._out_spatial)
 
         self.net = nn.Sequential(
             nn.Conv2d(3, 16, kernel_size=9, stride=2, padding=4),
@@ -32,7 +33,6 @@ class DeepJSCCEncoder(nn.Module):
             nn.PReLU(),
             nn.Conv2d(32, c_last, kernel_size=5, stride=1, padding=2),
         )
-        self._out_spatial = image_size // 4
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         z_tilde = self.net(x)
