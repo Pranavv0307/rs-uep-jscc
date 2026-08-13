@@ -9,7 +9,7 @@ channel:
   snr_db: 10
 train:
   lr: 0.001
-  epochs: 2000
+  epochs: 4000
   log_every: 100
 output:
   checkpoint_dir: results/checkpoints/week1_overfit
