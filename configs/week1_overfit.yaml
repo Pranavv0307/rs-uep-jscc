@@ -14,3 +14,5 @@ train:
 output:
   checkpoint_dir: results/checkpoints/week1_overfit
   log_dir: results/logs/week1_overfit
+wandb:
+  project: rs-uep-jscc

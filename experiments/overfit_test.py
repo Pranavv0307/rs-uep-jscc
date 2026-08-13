@@ -7,7 +7,7 @@ import os
 import yaml
 import torch
 import torch.nn as nn
-from torch.utils.tensorboard import SummaryWriter
+import wandb
 
 from data.cifar10 import get_overfit_subset_loader
 from models.deepjscc import DeepJSCCEncoder, DeepJSCCDecoder
@@ -22,10 +22,6 @@ def psnr(mse: torch.Tensor) -> float:
 
 @torch.no_grad()
 def evaluate_avg_psnr(encoder, decoder, channel, x_fixed, criterion, num_passes: int = 10):
-    """
-    Average PSNR over multiple channel noise realizations, since AWGN is
-    redrawn every forward pass and a single pass can be a lucky/unlucky draw.
-    """
     encoder.eval(); decoder.eval()
     mses = []
     for _ in range(num_passes):
@@ -50,9 +46,26 @@ def main(config_path: str, data_dir: str, snr_override: float = None):
         print("WARNING: no GPU detected. On Colab: Runtime > Change runtime "
               "type > GPU. On Kaggle: Settings panel > Accelerator > GPU.")
 
+    snr_db = snr_override if snr_override is not None else cfg["channel"]["snr_db"]
+
+    # ---- wandb init: logs config + metrics to your project dashboard ----
+    run = wandb.init(
+        project=cfg["wandb"]["project"],
+        name=f"week1-overfit-snr{snr_db}",
+        tags=["week1", "overfit-smoke-test"],
+        config={
+            "k_over_n": cfg["model"]["k_over_n"],
+            "image_size": cfg["model"]["image_size"],
+            "snr_db": snr_db,
+            "lr": cfg["train"]["lr"],
+            "epochs": cfg["train"]["epochs"],
+            "n_overfit_images": cfg["data"]["n_overfit_images"],
+            "batch_size": cfg["data"]["batch_size"],
+            "seed": cfg["seed"],
+        },
+    )
+
     os.makedirs(cfg["output"]["checkpoint_dir"], exist_ok=True)
-    os.makedirs(cfg["output"]["log_dir"], exist_ok=True)
-    writer = SummaryWriter(cfg["output"]["log_dir"])
 
     loader = get_overfit_subset_loader(
         data_dir=data_dir,
@@ -66,10 +79,6 @@ def main(config_path: str, data_dir: str, snr_override: float = None):
                                image_size=cfg["model"]["image_size"]).to(device)
     decoder = DeepJSCCDecoder(k=encoder.k,
                                image_size=cfg["model"]["image_size"]).to(device)
-
-    # allow overriding SNR from the command line for smoke-test vs real-run
-    # without editing the yaml back and forth
-    snr_db = snr_override if snr_override is not None else cfg["channel"]["snr_db"]
     channel = AWGNChannel(snr_db=snr_db).to(device)
     print(f"channel SNR = {snr_db} dB"
           f"{' (overridden from CLI)' if snr_override is not None else ' (from config)'}")
@@ -79,6 +88,7 @@ def main(config_path: str, data_dir: str, snr_override: float = None):
     criterion = nn.MSELoss()
 
     print(f"k = {encoder.k} channel symbols (ratio {cfg['model']['k_over_n']:.4f})")
+    wandb.config.update({"k": encoder.k})
 
     for epoch in range(1, cfg["train"]["epochs"] + 1):
         encoder.train(); decoder.train()
@@ -93,11 +103,8 @@ def main(config_path: str, data_dir: str, snr_override: float = None):
         if epoch % cfg["train"]["log_every"] == 0 or epoch == 1:
             current_psnr = psnr(loss.detach())
             print(f"epoch {epoch:5d} | MSE {loss.item():.6f} | PSNR {current_psnr:.2f} dB")
-            writer.add_scalar("overfit/mse", loss.item(), epoch)
-            writer.add_scalar("overfit/psnr_db", current_psnr, epoch)
+            wandb.log({"overfit/mse": loss.item(), "overfit/psnr_db": current_psnr}, step=epoch)
 
-    # final eval: average over multiple noise realizations instead of
-    # reading off the single last training-step loss
     avg_mse, final_psnr, individual_mses = evaluate_avg_psnr(
         encoder, decoder, channel, x_fixed, criterion, num_passes=10
     )
@@ -105,14 +112,29 @@ def main(config_path: str, data_dir: str, snr_override: float = None):
           f"(averaged over 10 noise realizations): {final_psnr:.2f} dB")
     print(f"  per-pass MSE range: {min(individual_mses):.6f} - {max(individual_mses):.6f}")
 
-    if final_psnr < 35:
+    passed = final_psnr >= 35
+    if not passed:
         print("WARNING: PSNR below 35 dB — likely pipeline bug, debug before Week 2.")
     else:
         print("PASS — pipeline verified. Safe to proceed to Week 2.")
 
-    torch.save({"encoder": encoder.state_dict(), "decoder": decoder.state_dict()},
-                os.path.join(cfg["output"]["checkpoint_dir"], "overfit_final.pth"))
-    writer.close()
+    wandb.log({
+        "final/psnr_db": final_psnr,
+        "final/mse": avg_mse,
+        "final/passed": passed,
+    })
+    wandb.summary["final_psnr_db"] = final_psnr
+    wandb.summary["passed"] = passed
+
+    ckpt_path = os.path.join(cfg["output"]["checkpoint_dir"], "overfit_final.pth")
+    torch.save({"encoder": encoder.state_dict(), "decoder": decoder.state_dict()}, ckpt_path)
+
+    # optional: version the checkpoint itself as a wandb artifact
+    artifact = wandb.Artifact("overfit-checkpoint", type="model")
+    artifact.add_file(ckpt_path)
+    run.log_artifact(artifact)
+
+    wandb.finish()
 
 
 if __name__ == "__main__":
