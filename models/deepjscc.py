@@ -23,16 +23,16 @@ class DeepJSCCEncoder(nn.Module):
         c_last = (2 * self.k) // (self._out_spatial * self._out_spatial)
 
         self.net = nn.Sequential(
-            nn.Conv2d(3, 16, kernel_size=9, stride=2, padding=4),
-            nn.PReLU(),
-            nn.Conv2d(16, 32, kernel_size=5, stride=2, padding=2),
-            nn.PReLU(),
-            nn.Conv2d(32, 32, kernel_size=5, stride=1, padding=2),
-            nn.PReLU(),
-            nn.Conv2d(32, 32, kernel_size=5, stride=1, padding=2),
-            nn.PReLU(),
-            nn.Conv2d(32, c_last, kernel_size=5, stride=1, padding=2),
-        )
+        nn.Conv2d(3, 16, kernel_size=5, stride=2, padding=2),   # was kernel_size=9, padding=4
+        nn.PReLU(),
+        nn.Conv2d(16, 32, kernel_size=5, stride=2, padding=2),
+        nn.PReLU(),
+        nn.Conv2d(32, 32, kernel_size=5, stride=1, padding=2),
+        nn.PReLU(),
+        nn.Conv2d(32, 32, kernel_size=5, stride=1, padding=2),
+        nn.PReLU(),
+        nn.Conv2d(32, c_last, kernel_size=5, stride=1, padding=2),
+)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         z_tilde = self.net(x)
@@ -50,20 +50,20 @@ class DeepJSCCDecoder(nn.Module):
         self.spatial = spatial
 
         self.net = nn.Sequential(
-            nn.ConvTranspose2d(c_last // (spatial * spatial), 32, kernel_size=5,
-                                stride=1, padding=2, output_padding=0),
-            nn.PReLU(),
-            nn.ConvTranspose2d(32, 32, kernel_size=5, stride=1, padding=2),
-            nn.PReLU(),
-            nn.ConvTranspose2d(32, 32, kernel_size=5, stride=1, padding=2),
-            nn.PReLU(),
-            nn.ConvTranspose2d(32, 16, kernel_size=5, stride=2, padding=2,
-                                output_padding=1),
-            nn.PReLU(),
-            nn.ConvTranspose2d(16, 3, kernel_size=9, stride=2, padding=4,
-                                output_padding=1),
-            nn.Sigmoid(),
-        )
+        nn.ConvTranspose2d(c_last // (spatial * spatial), 32, kernel_size=5,
+                            stride=1, padding=2, output_padding=0),
+        nn.PReLU(),
+        nn.ConvTranspose2d(32, 32, kernel_size=5, stride=1, padding=2),
+        nn.PReLU(),
+        nn.ConvTranspose2d(32, 32, kernel_size=5, stride=1, padding=2),
+        nn.PReLU(),
+        nn.ConvTranspose2d(32, 16, kernel_size=5, stride=2, padding=2,
+                            output_padding=1),
+        nn.PReLU(),
+        nn.ConvTranspose2d(16, 3, kernel_size=5, stride=2, padding=2,      # was kernel_size=9, padding=4
+                            output_padding=1),
+        nn.Sigmoid(),
+    )
 
     def forward(self, z_hat_flat: torch.Tensor) -> torch.Tensor:
         B = z_hat_flat.shape[0]
