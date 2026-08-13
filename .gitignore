@@ -17,6 +17,7 @@ results/
 *.ckpt
 runs/
 tensorboard_logs/
+wandb/
 
 # notebook execution artifacts
 notebooks/*-checkpoint.ipynb
