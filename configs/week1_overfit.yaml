@@ -1,0 +1,16 @@
+seed: 42
+data:
+  batch_size: 10
+  n_overfit_images: 10
+model:
+  k_over_n: 0.1667   # 1/6
+  image_size: 32
+channel:
+  snr_db: 10
+train:
+  lr: 0.001
+  epochs: 2000
+  log_every: 100
+output:
+  checkpoint_dir: results/checkpoints/week1_overfit
+  log_dir: results/logs/week1_overfit
