@@ -1,0 +1,28 @@
+# local env
+.venv/
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# datasets — never commit these
+data/cifar-10-batches-py/
+data/cifar-10-python.tar.gz
+
+# checkpoints and logs
+results/
+*.pth
+*.pt
+*.ckpt
+runs/
+tensorboard_logs/
+
+# notebook execution artifacts
+notebooks/*-checkpoint.ipynb
+
+# OS/editor junk
+.DS_Store
+.vscode/
+
+week1_execution_plan.md
