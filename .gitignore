@@ -9,6 +9,7 @@ __pycache__/
 # datasets — never commit these
 data/cifar-10-batches-py/
 data/cifar-10-python.tar.gz
+cifar10_data/
 
 # checkpoints and logs
 results/
