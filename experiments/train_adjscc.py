@@ -55,7 +55,12 @@ def main(config_path: str, data_dir: str):
         cfg = yaml.safe_load(f)
 
     torch.manual_seed(cfg["seed"])
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
     print(f"Using device: {device}")
     if device.type != "cuda":
         print("WARNING: no GPU detected -- this run is full-dataset, "
@@ -128,6 +133,6 @@ def main(config_path: str, data_dir: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="configs/week4_adjscc.yaml")
-    parser.add_argument("--data_dir", type=str, default="./cifar10_data")
+    parser.add_argument("--data_dir", type=str, default="./data")
     args = parser.parse_args()
     main(args.config, args.data_dir)

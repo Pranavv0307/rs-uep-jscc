@@ -68,7 +68,7 @@ WHAT THIS IS NOT
     working codec. The script tells you loudly when this happens.
 
 USAGE
------
+----
     ppython -m experiments.toy_demo
     ppython -m experiments.toy_demo --snr_db 2 --erasure_rate 0.3 --rs_protection uniform
     ppython -m experiments.toy_demo --snr_db 2 --erasure_rate 0.3 --rs_protection none
@@ -250,12 +250,17 @@ def main():
                          help="Override the auto-detected checkpoint path.")
     parser.add_argument("--n_images", type=int, default=4)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--data_dir", type=str, default="./cifar10_data")
+    parser.add_argument("--data_dir", type=str, default="./data")
     parser.add_argument("--out", type=str, default="results/toy_demo/reconstruction.png")
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
     print(f"Using device: {device}")
 
     # Fixed inputs: first N images of the CIFAR-10 *test* split (shuffle=False
@@ -300,11 +305,19 @@ def main():
     if n == 1:
         axes = axes.reshape(2, 1)
     for i in range(n):
-        axes[0, i].imshow(x[i].permute(1, 2, 0).cpu().numpy())
+        axes[0, i].imshow(
+            x[i].permute(1, 2, 0).cpu().numpy(),
+            interpolation="nearest"
+        )
+
+        axes[1, i].imshow(
+            x_hat[i].clamp(0, 1).permute(1, 2, 0).cpu().numpy(),
+            interpolation="nearest"
+        )
+
         axes[0, i].set_title(f"original #{i}")
         axes[0, i].axis("off")
 
-        axes[1, i].imshow(x_hat[i].clamp(0, 1).permute(1, 2, 0).cpu().numpy())
         axes[1, i].set_title(f"PSNR {psnr_vals[i].item():.1f} dB\nSSIM {ssim_vals[i].item():.3f}")
         axes[1, i].axis("off")
 

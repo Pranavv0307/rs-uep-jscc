@@ -28,3 +28,9 @@ notebooks/*-checkpoint.ipynb
 .vscode/
 
 week1_execution_plan.md
+
+# local untracked files
+amritape/
+data/*.zip
+images/
+scratch_eval.py

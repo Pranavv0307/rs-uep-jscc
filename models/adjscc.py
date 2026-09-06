@@ -24,7 +24,7 @@ Week 4 meeting note per the deliverables plan.
 import torch
 import torch.nn as nn
 
-from models.attention import AFModule
+from models.Attention import AFModule
 from models.deepjscc import power_normalize
 
 

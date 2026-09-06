@@ -40,7 +40,12 @@ def main(config_path: str, data_dir: str, snr_override: float = None):
         cfg = yaml.safe_load(f)
 
     torch.manual_seed(cfg["seed"])
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
     print(f"Using device: {device}")
     if device.type != "cuda":
         print("WARNING: no GPU detected. On Colab: Runtime > Change runtime "
@@ -140,7 +145,7 @@ def main(config_path: str, data_dir: str, snr_override: float = None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="configs/week1_overfit.yaml")
-    parser.add_argument("--data_dir", type=str, default="./cifar10_data")
+    parser.add_argument("--data_dir", type=str, default="./data")
     parser.add_argument("--snr_db", type=float, default=None,
                          help="Override channel.snr_db from config, e.g. --snr_db 25 "
                               "for a pure pipeline smoke test isolated from noise-floor effects.")
