@@ -1,0 +1,35 @@
+# Phase 3 -- UNQUANTIZED ADJSCC identity-channel FULL CIFAR-10 training.
+# The unquantized counterpart to configs/adjsccq_identity_train.yaml --
+# every shared value below (seed, batch_size, num_workers, k_over_n,
+# image_size, nominal_snr_db, lr, epochs, log_every, wandb project) is
+# deliberately IDENTICAL, so the two runs differ only in whether the
+# quantizer is present. See experiments/train_adjscc_identity.py's
+# module docstring.
+
+seed: 42
+
+data:
+  batch_size: 64
+  num_workers: 2
+
+model:
+  k_over_n: 0.16666667      # 1/6, matches configs/adjsccq_identity_train.yaml
+  image_size: 32
+
+# Same placeholder-conditioning-input reasoning as
+# configs/adjsccq_identity_train.yaml -- identity channel injects no
+# actual noise, this only fixes what value the AF modules see. Must match
+# the quantized config's value for the comparison to mean anything.
+af_conditioning:
+  nominal_snr_db: 10.0
+
+train:
+  lr: 0.001
+  epochs: 60                # matches configs/adjsccq_identity_train.yaml -- keep in sync
+  log_every: 100
+
+output:
+  checkpoint_dir: results/checkpoints/adjscc_identity_train
+
+wandb:
+  project: rs-uep-jscc

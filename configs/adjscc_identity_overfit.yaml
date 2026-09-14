@@ -1,0 +1,35 @@
+# Phase 3 -- UNQUANTIZED ADJSCC identity-channel overfit smoke test.
+# The unquantized counterpart to configs/adjsccq_identity_overfit.yaml --
+# every value below that both configs share (seed, n_overfit_images,
+# k_over_n, image_size, nominal_snr_db, lr, epochs, log_every, wandb
+# project) is deliberately IDENTICAL, so the two runs differ only in
+# whether the quantizer is present. See
+# experiments/overfit_test_adjscc_identity.py's module docstring.
+
+seed: 42
+
+data:
+  n_overfit_images: 10
+  batch_size: 10
+
+model:
+  k_over_n: 0.16666667      # 1/6, matches configs/adjsccq_identity_overfit.yaml
+  image_size: 32
+
+# Same placeholder-conditioning-input reasoning as
+# configs/adjsccq_identity_overfit.yaml -- identity channel injects no
+# actual noise, this only fixes what value the AF modules see. Must match
+# the quantized config's value for the comparison to mean anything.
+af_conditioning:
+  nominal_snr_db: 10.0
+
+train:
+  lr: 0.001
+  epochs: 4000
+  log_every: 500
+
+output:
+  checkpoint_dir: results/checkpoints/adjscc_identity_overfit
+
+wandb:
+  project: rs-uep-jscc

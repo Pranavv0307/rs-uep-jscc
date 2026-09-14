@@ -6,15 +6,27 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
+notebooks/*-checkpoint.ipynb
+pynbs/*-checkpoint.ipynb
 
 # datasets — never commit these
 data/cifar-10-batches-py/
 data/cifar-10-python.tar.gz
 cifar10_data/
+data/*.zip
 
+# checkpoints, logs, generated outputs — never commit these
+results/
+*.pth
+*.pt
+*.ckpt
 
-# notebook execution artifacts
-notebooks/*-checkpoint.ipynb
+# test cache
+.pytest_cache/
+
+# W&B local run mirrors — never commit these, regenerate every run
+wandb/
+wandb_logs/
 
 # OS/editor junk
 .DS_Store
@@ -24,6 +36,5 @@ week1_execution_plan.md
 
 # local untracked files
 amritape/
-data/*.zip
 images/
-scratch_eval.pyvenv/
+scratch_eval.py

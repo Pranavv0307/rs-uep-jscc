@@ -55,4 +55,5 @@ wandb:
 # threshold -- some PSNR loss from 256-level quantization is expected,
 # and the informative number is the DELTA against the unquantized
 # ADJSCC baseline at the same nominal SNR, not an absolute bar.
-report_baseline_psnr_db: null   # fill in from the matching unquantized ADJSCC run before comparing
+report_baseline_psnr_db: 33.34   # unquantized ADJSCC, identity channel, same 10 images/seed/nominal_snr_db,
+                                  # via experiments/overfit_test_adjscc_identity.py (configs/adjscc_identity_overfit.yaml)
