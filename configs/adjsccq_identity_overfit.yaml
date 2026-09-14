@@ -49,11 +49,7 @@ output:
   checkpoint_dir: results/checkpoints/adjsccq_identity_overfit
 
 wandb:
-  # TODO: fill in with the same project name used in
-  # configs/week1_overfit.yaml -- I don't have that file, so this is a
-  # placeholder, not a real value. The script will fail at wandb.init()
-  # until this is a real project name.
-  project: "REPLACE_WITH_YOUR_WANDB_PROJECT_NAME"
+  project: rs-uep-jscc
 
 # This phase does NOT use a fixed pass/fail dB bar like Week 1's 35 dB
 # threshold -- some PSNR loss from 256-level quantization is expected,

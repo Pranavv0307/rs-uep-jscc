@@ -251,7 +251,7 @@ def main():
     parser.add_argument("--n_images", type=int, default=4)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--data_dir", type=str, default="./data")
-    parser.add_argument("--out", type=str, default="results/toy_demo/reconstruction.png")
+    parser.add_argument("--out", type=str, default="results/toy_demo/reconstruction3.png")
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
