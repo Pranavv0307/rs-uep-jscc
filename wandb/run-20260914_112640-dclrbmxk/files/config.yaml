@@ -1,0 +1,95 @@
+_wandb:
+    value:
+        cli_version: 0.28.2
+        e:
+            hhnvtzuk3rmy0p073hftw4je3hu951xa:
+                apple:
+                    ecpuCores: 4
+                    gpuCores: 10
+                    macModel: Mac14,15
+                    memoryGb: 16
+                    name: Apple M2
+                    pcpuCores: 4
+                    ramTotalBytes: "17179869184"
+                    swapTotalBytes: "4294967296"
+                codePath: experiments/train_adjsccq_identity.py
+                codePathLocal: experiments/train_adjsccq_identity.py
+                cpu_count: 8
+                cpu_count_logical: 8
+                disk:
+                    /:
+                        total: "494384795648"
+                        used: "474321690624"
+                email: mithileshyechuri03@gmail.com
+                executable: /Users/mithileshsaiyechuri/opt/anaconda3/bin/python3
+                git:
+                    commit: 4706fb594583aee759d52b622b3f6de15bd8d762
+                    remote: https://github.com/Pranavv0307/rs-uep-jscc
+                host: Mithileshs-MacBook-Air.local
+                memory:
+                    total: "17179869184"
+                os: macOS-26.6.2-arm64-arm-64bit
+                program: /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE/experiments/train_adjsccq_identity.py
+                python: CPython 3.11.8
+                root: /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE
+                startedAt: "2026-09-14T05:56:40.700208Z"
+                writerId: hhnvtzuk3rmy0p073hftw4je3hu951xa
+        m: []
+        python_version: 3.11.8
+        t:
+            "1":
+                - 1
+                - 41
+            "2":
+                - 1
+                - 41
+            "3":
+                - 2
+                - 13
+                - 15
+                - 16
+                - 61
+                - 62
+            "4": 3.11.8
+            "5": 0.28.2
+            "12": 0.28.2
+            "13": darwin-arm64
+af_conditioning:
+    value:
+        nominal_snr_db: 10
+data:
+    value:
+        batch_size: 64
+        num_workers: 2
+k:
+    value: 512
+model:
+    value:
+        image_size: 32
+        k_over_n: 0.16666667
+output:
+    value:
+        checkpoint_dir: results/checkpoints/adjsccq_identity_train
+quantizer:
+    value:
+        calibrate_high_pct: 99
+        calibrate_low_pct: 1
+        init_range:
+            - -3
+            - 3
+        num_levels: 256
+        sigma_anneal_epochs: 50
+        sigma_end: 0.05
+        sigma_start: 1
+report_baseline_psnr_db:
+    value: null
+seed:
+    value: 42
+train:
+    value:
+        epochs: 60
+        log_every: 100
+        lr: 0.001
+wandb:
+    value:
+        project: rs-uep-jscc

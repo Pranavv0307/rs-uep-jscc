@@ -1,0 +1,15 @@
+nominal SNR (AF conditioning only, no channel noise this phase) = 10.0 dB (from config)
+k = 512 channel symbols (ratio 0.1667)
+epoch     1 | sigma_q 1.0000 | MSE 0.068879 | PSNR 11.62 dB
+epoch   500 | sigma_q 0.8420 | MSE 0.004902 | PSNR 23.10 dB
+epoch  1000 | sigma_q 0.6836 | MSE 0.015338 | PSNR 18.14 dB
+epoch  1500 | sigma_q 0.5253 | MSE 0.001376 | PSNR 28.62 dB
+epoch  2000 | sigma_q 0.3670 | MSE 0.000868 | PSNR 30.61 dB
+epoch  2500 | sigma_q 0.2087 | MSE 0.001768 | PSNR 27.53 dB
+epoch  3000 | sigma_q 0.0503 | MSE 0.000690 | PSNR 31.61 dB
+epoch  3500 | sigma_q 0.0500 | MSE 0.000528 | PSNR 32.78 dB
+epoch  4000 | sigma_q 0.0500 | MSE 0.000449 | PSNR 33.47 dB
+
+Final identity-channel PSNR after 4000 epochs: 33.31 dB
+Codebook utilization: 237/256 levels actually used
+No report_baseline_psnr_db set in config -- fill it in from the matching unquantized ADJSCC run to see the quantization-only PSNR cost.

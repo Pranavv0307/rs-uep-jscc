@@ -1,0 +1,87 @@
+_wandb:
+    value:
+        cli_version: 0.28.2
+        e:
+            mi8vhoc8cyqs5nbeaizb7s40frlon5m3:
+                apple:
+                    ecpuCores: 4
+                    gpuCores: 10
+                    macModel: Mac14,15
+                    memoryGb: 16
+                    name: Apple M2
+                    pcpuCores: 4
+                    ramTotalBytes: "17179869184"
+                    swapTotalBytes: "3221225472"
+                cpu_count: 8
+                cpu_count_logical: 8
+                disk:
+                    /:
+                        total: "494384795648"
+                        used: "451384299520"
+                email: mithileshyechuri03@gmail.com
+                executable: /Users/mithileshsaiyechuri/opt/anaconda3/bin/python
+                git:
+                    commit: edd868caa2e32f2bb8b36d1cdd038021aab2a0c7
+                    remote: https://github.com/Pranavv0307/rs-uep-jscc
+                host: Mithileshs-MacBook-Air.local
+                memory:
+                    total: "17179869184"
+                os: macOS-26.6.2-arm64-arm-64bit
+                program: -m experiments.train_adjscc
+                python: CPython 3.11.8
+                root: /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE
+                startedAt: "2026-09-04T07:03:38.346640Z"
+                writerId: mi8vhoc8cyqs5nbeaizb7s40frlon5m3
+        m: []
+        python_version: 3.11.8
+        t:
+            "1":
+                - 1
+                - 41
+            "2":
+                - 1
+                - 41
+            "3":
+                - 2
+                - 13
+                - 15
+                - 16
+                - 61
+            "4": 3.11.8
+            "5": 0.28.2
+            "12": 0.28.2
+            "13": darwin-arm64
+channel:
+    value:
+        snr_db_max: 20
+        snr_db_min: 0
+data:
+    value:
+        batch_size: 64
+        num_workers: 2
+k:
+    value: 512
+model:
+    value:
+        image_size: 32
+        k_over_n: 0.1667
+output:
+    value:
+        checkpoint_dir: results/checkpoints/week4_adjscc
+        log_dir: results/logs/week4_adjscc
+seed:
+    value: 42
+train:
+    value:
+        epochs: 60
+        eval_snrs:
+            - 0
+            - 5
+            - 10
+            - 15
+            - 20
+        log_every: 100
+        lr: 0.001
+wandb:
+    value:
+        project: rs-uep-jscc

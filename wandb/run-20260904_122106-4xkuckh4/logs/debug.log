@@ -1,0 +1,13 @@
+2026-09-04 12:21:06,237 INFO    MainThread:65286 [wandb_setup.py:_flush():81] Current SDK version is 0.29.0
+2026-09-04 12:21:06,237 INFO    MainThread:65286 [wandb_setup.py:_flush():81] Configure stats pid to 65286
+2026-09-04 12:21:06,237 INFO    MainThread:65286 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2026-09-04 12:21:06,237 INFO    MainThread:65286 [wandb_init.py:setup_run_log_directory():739] Logging user logs to /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE/wandb/run-20260904_122106-4xkuckh4/logs/debug.log
+2026-09-04 12:21:06,237 INFO    MainThread:65286 [wandb_init.py:setup_run_log_directory():740] Logging internal logs to /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE/wandb/run-20260904_122106-4xkuckh4/logs/debug-internal.log
+2026-09-04 12:21:06,238 INFO    MainThread:65286 [wandb_init.py:init():783] calling init triggers
+2026-09-04 12:21:06,238 INFO    MainThread:65286 [wandb_init.py:init():788] wandb.init called with sweep_config: {}
+config: {'k_over_n': 0.1667, 'image_size': 32, 'snr_db': 10, 'lr': 0.001, 'epochs': 4000, 'n_overfit_images': 10, 'batch_size': 10, 'seed': 42, '_wandb': {}}
+2026-09-04 12:21:06,238 INFO    MainThread:65286 [wandb_init.py:init():831] starting backend
+2026-09-04 12:21:06,238 INFO    MainThread:65286 [wandb_init.py:init():846] sending inform_init request
+2026-09-04 12:21:07,192 INFO    MainThread:65286 [wandb_init.py:init():851] backend started and connected
+2026-09-04 12:21:07,193 INFO    MainThread:65286 [wandb_init.py:init():921] updated telemetry
+2026-09-04 12:21:07,226 INFO    MainThread:65286 [wandb_init.py:init():944] communicating run to backend with 90.0 second timeout

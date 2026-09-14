@@ -1,0 +1,1 @@
+{"final/psnr_db":35.15441179275513,"overfit/mse":0.00029477066709659994,"final/passed":true,"passed":true,"overfit/psnr_db":35.30515670776367,"_timestamp":1.788504739009994e+09,"_step":4000,"final_psnr_db":35.15441179275513,"_wandb":{"runtime":41},"_runtime":41,"final/mse":0.0003051818785024807}

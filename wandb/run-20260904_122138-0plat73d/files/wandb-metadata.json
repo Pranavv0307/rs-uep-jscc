@@ -1,0 +1,36 @@
+{
+  "os":  "macOS-26.6.2-arm64-arm-64bit",
+  "python":  "CPython 3.11.8",
+  "startedAt":  "2026-09-04T06:51:38.058725Z",
+  "program":  "-m experiments.overfit_test",
+  "git":  {
+    "remote":  "https://github.com/Pranavv0307/rs-uep-jscc",
+    "commit":  "edd868caa2e32f2bb8b36d1cdd038021aab2a0c7"
+  },
+  "email":  "mithileshyechuri03@gmail.com",
+  "root":  "/Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE",
+  "host":  "Mithileshs-MacBook-Air.local",
+  "executable":  "/Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE/amritape/bin/python",
+  "cpu_count":  8,
+  "cpu_count_logical":  8,
+  "disk":  {
+    "/":  {
+      "total":  "494384795648",
+      "used":  "452925419520"
+    }
+  },
+  "memory":  {
+    "total":  "17179869184"
+  },
+  "apple":  {
+    "name":  "Apple M2",
+    "ecpuCores":  4,
+    "pcpuCores":  4,
+    "gpuCores":  10,
+    "memoryGb":  16,
+    "swapTotalBytes":  "3221225472",
+    "ramTotalBytes":  "17179869184",
+    "macModel":  "Mac14,15"
+  },
+  "writerId":  "uls30cdxcdj1rcci5l7949w0ew7hwio2"
+}

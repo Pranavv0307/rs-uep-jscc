@@ -1,0 +1,72 @@
+_wandb:
+    value:
+        cli_version: 0.29.0
+        e:
+            uls30cdxcdj1rcci5l7949w0ew7hwio2:
+                apple:
+                    ecpuCores: 4
+                    gpuCores: 10
+                    macModel: Mac14,15
+                    memoryGb: 16
+                    name: Apple M2
+                    pcpuCores: 4
+                    ramTotalBytes: "17179869184"
+                    swapTotalBytes: "3221225472"
+                cpu_count: 8
+                cpu_count_logical: 8
+                disk:
+                    /:
+                        total: "494384795648"
+                        used: "452925419520"
+                email: mithileshyechuri03@gmail.com
+                executable: /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE/amritape/bin/python
+                git:
+                    commit: edd868caa2e32f2bb8b36d1cdd038021aab2a0c7
+                    remote: https://github.com/Pranavv0307/rs-uep-jscc
+                host: Mithileshs-MacBook-Air.local
+                memory:
+                    total: "17179869184"
+                os: macOS-26.6.2-arm64-arm-64bit
+                program: -m experiments.overfit_test
+                python: CPython 3.11.8
+                root: /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE
+                startedAt: "2026-09-04T06:51:38.058725Z"
+                writerId: uls30cdxcdj1rcci5l7949w0ew7hwio2
+        m: []
+        python_version: 3.11.8
+        t:
+            "1":
+                - 1
+                - 41
+            "2":
+                - 1
+                - 41
+            "3":
+                - 2
+                - 13
+                - 15
+                - 16
+                - 61
+                - 62
+            "4": 3.11.8
+            "5": 0.29.0
+            "12": 0.29.0
+            "13": darwin-arm64
+batch_size:
+    value: 10
+epochs:
+    value: 4000
+image_size:
+    value: 32
+k:
+    value: 512
+k_over_n:
+    value: 0.1667
+lr:
+    value: 0.001
+n_overfit_images:
+    value: 10
+seed:
+    value: 42
+snr_db:
+    value: 10

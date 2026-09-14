@@ -1,0 +1,20 @@
+2026-09-04 12:27:31,663 INFO    MainThread:66643 [wandb_setup.py:_flush():81] Current SDK version is 0.29.0
+2026-09-04 12:27:31,663 INFO    MainThread:66643 [wandb_setup.py:_flush():81] Configure stats pid to 66643
+2026-09-04 12:27:31,663 INFO    MainThread:66643 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2026-09-04 12:27:31,663 INFO    MainThread:66643 [wandb_init.py:setup_run_log_directory():739] Logging user logs to /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE/wandb/run-20260904_122731-yva88in5/logs/debug.log
+2026-09-04 12:27:31,663 INFO    MainThread:66643 [wandb_init.py:setup_run_log_directory():740] Logging internal logs to /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE/wandb/run-20260904_122731-yva88in5/logs/debug-internal.log
+2026-09-04 12:27:31,663 INFO    MainThread:66643 [wandb_init.py:init():783] calling init triggers
+2026-09-04 12:27:31,663 INFO    MainThread:66643 [wandb_init.py:init():788] wandb.init called with sweep_config: {}
+config: {'seed': 42, 'data': {'batch_size': 64, 'num_workers': 2}, 'model': {'k_over_n': 0.1667, 'image_size': 32}, 'channel': {'snr_db_min': 0, 'snr_db_max': 20}, 'train': {'lr': 0.001, 'epochs': 60, 'log_every': 100, 'eval_snrs': [0, 5, 10, 15, 20]}, 'output': {'checkpoint_dir': 'results/checkpoints/week4_adjscc', 'log_dir': 'results/logs/week4_adjscc'}, 'wandb': {'project': 'rs-uep-jscc'}, '_wandb': {}}
+2026-09-04 12:27:31,663 INFO    MainThread:66643 [wandb_init.py:init():831] starting backend
+2026-09-04 12:27:31,663 INFO    MainThread:66643 [wandb_init.py:init():846] sending inform_init request
+2026-09-04 12:27:32,691 INFO    MainThread:66643 [wandb_init.py:init():851] backend started and connected
+2026-09-04 12:27:32,693 INFO    MainThread:66643 [wandb_init.py:init():921] updated telemetry
+2026-09-04 12:27:32,726 INFO    MainThread:66643 [wandb_init.py:init():944] communicating run to backend with 90.0 second timeout
+2026-09-04 12:27:33,920 INFO    MainThread:66643 [wandb_init.py:init():981] starting run threads in backend
+2026-09-04 12:27:33,944 INFO    MainThread:66643 [wandb_run.py:_console_start():2545] atexit reg
+2026-09-04 12:27:33,944 INFO    MainThread:66643 [wandb_run.py:_redirect():2395] redirect: wrap_raw
+2026-09-04 12:27:33,944 INFO    MainThread:66643 [wandb_run.py:_redirect():2464] Wrapping output streams.
+2026-09-04 12:27:33,944 INFO    MainThread:66643 [wandb_run.py:_redirect():2487] Redirects installed.
+2026-09-04 12:27:33,947 INFO    MainThread:66643 [wandb_init.py:init():1019] run started, returning control to user process
+2026-09-04 12:27:33,950 INFO    MainThread:66643 [wandb_run.py:_config_callback():1291] config_cb None None {'k': 512}

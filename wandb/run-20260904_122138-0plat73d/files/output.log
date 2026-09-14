@@ -1,0 +1,48 @@
+Files already downloaded and verified
+channel SNR = 10 dB (from config)
+k = 512 channel symbols (ratio 0.1667)
+epoch     1 | MSE 0.067005 | PSNR 11.74 dB
+epoch   100 | MSE 0.020170 | PSNR 16.95 dB
+epoch   200 | MSE 0.009396 | PSNR 20.27 dB
+epoch   300 | MSE 0.005205 | PSNR 22.84 dB
+epoch   400 | MSE 0.003166 | PSNR 24.99 dB
+epoch   500 | MSE 0.002271 | PSNR 26.44 dB
+epoch   600 | MSE 0.001713 | PSNR 27.66 dB
+epoch   700 | MSE 0.001607 | PSNR 27.94 dB
+epoch   800 | MSE 0.001234 | PSNR 29.09 dB
+epoch   900 | MSE 0.001094 | PSNR 29.61 dB
+epoch  1000 | MSE 0.000962 | PSNR 30.17 dB
+epoch  1100 | MSE 0.000868 | PSNR 30.61 dB
+epoch  1200 | MSE 0.001010 | PSNR 29.96 dB
+epoch  1300 | MSE 0.000733 | PSNR 31.35 dB
+epoch  1400 | MSE 0.000694 | PSNR 31.59 dB
+epoch  1500 | MSE 0.000658 | PSNR 31.82 dB
+epoch  1600 | MSE 0.000630 | PSNR 32.01 dB
+epoch  1700 | MSE 0.000575 | PSNR 32.40 dB
+epoch  1800 | MSE 0.000525 | PSNR 32.80 dB
+epoch  1900 | MSE 0.000493 | PSNR 33.07 dB
+epoch  2000 | MSE 0.000500 | PSNR 33.01 dB
+epoch  2100 | MSE 0.000519 | PSNR 32.85 dB
+epoch  2200 | MSE 0.000438 | PSNR 33.59 dB
+epoch  2300 | MSE 0.000420 | PSNR 33.77 dB
+epoch  2400 | MSE 0.000428 | PSNR 33.69 dB
+epoch  2500 | MSE 0.000405 | PSNR 33.92 dB
+epoch  2600 | MSE 0.000390 | PSNR 34.09 dB
+epoch  2700 | MSE 0.000406 | PSNR 33.92 dB
+epoch  2800 | MSE 0.000363 | PSNR 34.40 dB
+epoch  2900 | MSE 0.000380 | PSNR 34.20 dB
+epoch  3000 | MSE 0.000339 | PSNR 34.70 dB
+epoch  3100 | MSE 0.000355 | PSNR 34.49 dB
+epoch  3200 | MSE 0.000337 | PSNR 34.72 dB
+epoch  3300 | MSE 0.000323 | PSNR 34.90 dB
+epoch  3400 | MSE 0.000307 | PSNR 35.13 dB
+epoch  3500 | MSE 0.000307 | PSNR 35.13 dB
+epoch  3600 | MSE 0.000287 | PSNR 35.42 dB
+epoch  3700 | MSE 0.000311 | PSNR 35.07 dB
+epoch  3800 | MSE 0.000268 | PSNR 35.72 dB
+epoch  3900 | MSE 0.000271 | PSNR 35.66 dB
+epoch  4000 | MSE 0.000295 | PSNR 35.31 dB
+
+Final PSNR after 4000 epochs (averaged over 10 noise realizations): 35.15 dB
+  per-pass MSE range: 0.000294 - 0.000317
+PASS — pipeline verified. Safe to proceed to Week 2.

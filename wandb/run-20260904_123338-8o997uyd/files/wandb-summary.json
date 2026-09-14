@@ -1,0 +1,1 @@
+{"train/mse":0.0022051066625863314,"train/psnr_db":26.565704345703125,"eval/psnr_db_snr20":29.92297649383545,"_wandb":{"runtime":5744},"eval/psnr_db_snr5":25.234389305114746,"_timestamp":1.788511165086698e+09,"eval/psnr_db_snr10":27.85238265991211,"eval/psnr_db_snr15":29.32473659515381,"_runtime":5744.201649209,"_step":46860,"eval/psnr_db_snr0":22.018046379089355}

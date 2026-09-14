@@ -1,0 +1,1 @@
+{"final/codebook_levels_used":237,"final_psnr_db":33.31298351287842,"_runtime":81,"overfit/psnr_db":33.47410202026367,"overfit/mse":0.00044935516780242324,"codebook_levels_used":237,"final/psnr_db":33.31298351287842,"_wandb":{"runtime":81},"final/mse":0.000466338824480772,"overfit/sigma_q":0.05,"_timestamp":1.7893652086767519e+09,"_step":4000}

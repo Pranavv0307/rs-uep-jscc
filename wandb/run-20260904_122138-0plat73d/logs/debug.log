@@ -1,0 +1,25 @@
+2026-09-04 12:21:38,061 INFO    MainThread:65621 [wandb_setup.py:_flush():81] Current SDK version is 0.29.0
+2026-09-04 12:21:38,061 INFO    MainThread:65621 [wandb_setup.py:_flush():81] Configure stats pid to 65621
+2026-09-04 12:21:38,061 INFO    MainThread:65621 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2026-09-04 12:21:38,061 INFO    MainThread:65621 [wandb_init.py:setup_run_log_directory():739] Logging user logs to /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE/wandb/run-20260904_122138-0plat73d/logs/debug.log
+2026-09-04 12:21:38,061 INFO    MainThread:65621 [wandb_init.py:setup_run_log_directory():740] Logging internal logs to /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE/wandb/run-20260904_122138-0plat73d/logs/debug-internal.log
+2026-09-04 12:21:38,061 INFO    MainThread:65621 [wandb_init.py:init():783] calling init triggers
+2026-09-04 12:21:38,061 INFO    MainThread:65621 [wandb_init.py:init():788] wandb.init called with sweep_config: {}
+config: {'k_over_n': 0.1667, 'image_size': 32, 'snr_db': 10, 'lr': 0.001, 'epochs': 4000, 'n_overfit_images': 10, 'batch_size': 10, 'seed': 42, '_wandb': {}}
+2026-09-04 12:21:38,061 INFO    MainThread:65621 [wandb_init.py:init():831] starting backend
+2026-09-04 12:21:38,061 INFO    MainThread:65621 [wandb_init.py:init():846] sending inform_init request
+2026-09-04 12:21:39,200 INFO    MainThread:65621 [wandb_init.py:init():851] backend started and connected
+2026-09-04 12:21:39,201 INFO    MainThread:65621 [wandb_init.py:init():921] updated telemetry
+2026-09-04 12:21:39,232 INFO    MainThread:65621 [wandb_init.py:init():944] communicating run to backend with 90.0 second timeout
+2026-09-04 12:21:40,260 INFO    MainThread:65621 [wandb_init.py:init():981] starting run threads in backend
+2026-09-04 12:21:40,287 INFO    MainThread:65621 [wandb_run.py:_console_start():2545] atexit reg
+2026-09-04 12:21:40,287 INFO    MainThread:65621 [wandb_run.py:_redirect():2395] redirect: wrap_raw
+2026-09-04 12:21:40,287 INFO    MainThread:65621 [wandb_run.py:_redirect():2464] Wrapping output streams.
+2026-09-04 12:21:40,287 INFO    MainThread:65621 [wandb_run.py:_redirect():2487] Redirects installed.
+2026-09-04 12:21:40,290 INFO    MainThread:65621 [wandb_init.py:init():1019] run started, returning control to user process
+2026-09-04 12:21:41,016 INFO    MainThread:65621 [wandb_run.py:_config_callback():1291] config_cb None None {'k': 512}
+2026-09-04 12:22:22,070 INFO    MainThread:65621 [wandb_run.py:_finish():2316] finishing run mithileshyechuri03-international-institute-of-informatio/rs-uep-jscc/0plat73d
+2026-09-04 12:22:22,070 INFO    MainThread:65621 [wandb_run.py:_atexit_cleanup():2512] got exitcode: 0
+2026-09-04 12:22:22,071 INFO    MainThread:65621 [wandb_run.py:_restore():2494] restore
+2026-09-04 12:22:22,071 INFO    MainThread:65621 [wandb_run.py:_restore():2500] restore done
+2026-09-04 12:22:28,418 INFO    MainThread:65621 [wandb_run.py:_footer_sync_info():3917] logging synced files

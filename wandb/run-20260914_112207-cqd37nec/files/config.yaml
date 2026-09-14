@@ -1,0 +1,85 @@
+_wandb:
+    value:
+        cli_version: 0.28.2
+        e:
+            8krcm99vhhk9cgsmeb11d6x8f51805en:
+                apple:
+                    ecpuCores: 4
+                    gpuCores: 10
+                    macModel: Mac14,15
+                    memoryGb: 16
+                    name: Apple M2
+                    pcpuCores: 4
+                    ramTotalBytes: "17179869184"
+                    swapTotalBytes: "2147483648"
+                args:
+                    - --config
+                    - configs/adjsccq_identity_overfit.yaml
+                codePath: experiments/overfit_test_adjsccq.py
+                codePathLocal: experiments/overfit_test_adjsccq.py
+                cpu_count: 8
+                cpu_count_logical: 8
+                disk:
+                    /:
+                        total: "494384795648"
+                        used: "472184143872"
+                email: mithileshyechuri03@gmail.com
+                executable: /Users/mithileshsaiyechuri/opt/anaconda3/bin/python3
+                git:
+                    commit: 4706fb594583aee759d52b622b3f6de15bd8d762
+                    remote: https://github.com/Pranavv0307/rs-uep-jscc
+                host: Mithileshs-MacBook-Air.local
+                memory:
+                    total: "17179869184"
+                os: macOS-26.6.2-arm64-arm-64bit
+                program: /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE/experiments/overfit_test_adjsccq.py
+                python: CPython 3.11.8
+                root: /Users/mithileshsaiyechuri/Acads/Sem 7/Amrita PE
+                startedAt: "2026-09-14T05:52:07.985291Z"
+                writerId: 8krcm99vhhk9cgsmeb11d6x8f51805en
+        m: []
+        python_version: 3.11.8
+        t:
+            "1":
+                - 1
+                - 41
+            "2":
+                - 1
+                - 41
+            "3":
+                - 2
+                - 13
+                - 15
+                - 16
+                - 61
+                - 62
+            "4": 3.11.8
+            "5": 0.28.2
+            "12": 0.28.2
+            "13": darwin-arm64
+batch_size:
+    value: 10
+epochs:
+    value: 4000
+image_size:
+    value: 32
+k:
+    value: 512
+k_over_n:
+    value: 0.16666667
+lr:
+    value: 0.001
+n_overfit_images:
+    value: 10
+nominal_snr_db:
+    value: 10
+num_levels:
+    value: 256
+seed:
+    value: 42
+sigma_anneal_epochs:
+    value: 3000
+sigma_end:
+    value: 0.05
+sigma_start:
+    value: 1

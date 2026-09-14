@@ -1,0 +1,68 @@
+nominal SNR (AF conditioning only, no channel noise) = 10.0 dB
+k = 512 channel symbols (ratio 0.1667)
+/Users/mithileshsaiyechuri/opt/anaconda3/lib/python3.11/site-packages/torch/utils/data/dataloader.py:1118: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+epoch   1 | sigma_q 1.0000 | eval PSNR: 19.71 dB
+epoch   2 | sigma_q 0.9810 | eval PSNR: 20.51 dB
+epoch   3 | sigma_q 0.9620 | eval PSNR: 21.30 dB
+epoch   4 | sigma_q 0.9430 | eval PSNR: 22.11 dB
+epoch   5 | sigma_q 0.9240 | eval PSNR: 22.51 dB
+epoch   6 | sigma_q 0.9050 | eval PSNR: 22.80 dB
+epoch   7 | sigma_q 0.8860 | eval PSNR: 23.52 dB
+epoch   8 | sigma_q 0.8670 | eval PSNR: 24.08 dB
+epoch   9 | sigma_q 0.8480 | eval PSNR: 24.31 dB
+epoch  10 | sigma_q 0.8290 | eval PSNR: 24.70 dB
+epoch  11 | sigma_q 0.8100 | eval PSNR: 24.93 dB
+epoch  12 | sigma_q 0.7910 | eval PSNR: 25.16 dB
+epoch  13 | sigma_q 0.7720 | eval PSNR: 25.46 dB
+epoch  14 | sigma_q 0.7530 | eval PSNR: 25.51 dB
+epoch  15 | sigma_q 0.7340 | eval PSNR: 25.89 dB
+epoch  16 | sigma_q 0.7150 | eval PSNR: 25.87 dB
+epoch  17 | sigma_q 0.6960 | eval PSNR: 26.07 dB
+epoch  18 | sigma_q 0.6770 | eval PSNR: 25.94 dB
+epoch  19 | sigma_q 0.6580 | eval PSNR: 22.03 dB
+epoch  20 | sigma_q 0.6390 | eval PSNR: 23.39 dB
+epoch  21 | sigma_q 0.6200 | eval PSNR: 24.18 dB
+epoch  22 | sigma_q 0.6010 | eval PSNR: 23.26 dB
+epoch  23 | sigma_q 0.5820 | eval PSNR: 23.59 dB
+epoch  24 | sigma_q 0.5630 | eval PSNR: 26.06 dB
+epoch  25 | sigma_q 0.5440 | eval PSNR: 25.43 dB
+epoch  26 | sigma_q 0.5250 | eval PSNR: 22.21 dB
+epoch  27 | sigma_q 0.5060 | eval PSNR: 22.90 dB
+epoch  28 | sigma_q 0.4870 | eval PSNR: 22.44 dB
+epoch  29 | sigma_q 0.4680 | eval PSNR: 24.34 dB
+epoch  30 | sigma_q 0.4490 | eval PSNR: 24.77 dB
+epoch  31 | sigma_q 0.4300 | eval PSNR: 24.77 dB
+epoch  32 | sigma_q 0.4110 | eval PSNR: 24.53 dB
+epoch  33 | sigma_q 0.3920 | eval PSNR: 25.06 dB
+epoch  34 | sigma_q 0.3730 | eval PSNR: 25.21 dB
+epoch  35 | sigma_q 0.3540 | eval PSNR: 25.36 dB
+epoch  36 | sigma_q 0.3350 | eval PSNR: 25.61 dB
+epoch  37 | sigma_q 0.3160 | eval PSNR: 25.89 dB
+epoch  38 | sigma_q 0.2970 | eval PSNR: 26.16 dB
+epoch  39 | sigma_q 0.2780 | eval PSNR: 25.96 dB
+epoch  40 | sigma_q 0.2590 | eval PSNR: 26.17 dB
+epoch  41 | sigma_q 0.2400 | eval PSNR: 26.50 dB
+epoch  42 | sigma_q 0.2210 | eval PSNR: 27.52 dB
+epoch  43 | sigma_q 0.2020 | eval PSNR: 27.17 dB
+epoch  44 | sigma_q 0.1830 | eval PSNR: 27.63 dB
+epoch  45 | sigma_q 0.1640 | eval PSNR: 28.21 dB
+epoch  46 | sigma_q 0.1450 | eval PSNR: 28.48 dB
+epoch  47 | sigma_q 0.1260 | eval PSNR: 28.70 dB
+epoch  48 | sigma_q 0.1070 | eval PSNR: 28.68 dB
+epoch  49 | sigma_q 0.0880 | eval PSNR: 28.84 dB
+epoch  50 | sigma_q 0.0690 | eval PSNR: 29.08 dB
+epoch  51 | sigma_q 0.0500 | eval PSNR: 29.18 dB
+epoch  52 | sigma_q 0.0500 | eval PSNR: 29.34 dB
+epoch  53 | sigma_q 0.0500 | eval PSNR: 29.41 dB
+epoch  54 | sigma_q 0.0500 | eval PSNR: 29.55 dB
+epoch  55 | sigma_q 0.0500 | eval PSNR: 29.53 dB
+epoch  56 | sigma_q 0.0500 | eval PSNR: 29.75 dB
+epoch  57 | sigma_q 0.0500 | eval PSNR: 29.96 dB
+epoch  58 | sigma_q 0.0500 | eval PSNR: 30.08 dB
+epoch  59 | sigma_q 0.0500 | eval PSNR: 29.22 dB
+epoch  60 | sigma_q 0.0500 | eval PSNR: 29.82 dB
+
+Running final hard-quantized evaluation...
+Final PSNR after 60 epochs: 29.82 dB
+Codebook utilization: 180/256 levels used
