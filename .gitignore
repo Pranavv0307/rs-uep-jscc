@@ -1,5 +1,6 @@
 # local env
 .venv/
+venv/
 __pycache__/
 *.pyc
 
@@ -33,4 +34,4 @@ week1_execution_plan.md
 amritape/
 data/*.zip
 images/
-scratch_eval.py
+scratch_eval.pyvenv/

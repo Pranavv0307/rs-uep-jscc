@@ -1,0 +1,62 @@
+# Phase 3 -- ADJSCC-Q, identity-channel overfit smoke test.
+# Schema deliberately mirrors configs/week1_overfit.yaml's nested
+# structure (model / data / train / output / wandb) so this config is
+# easy to read side-by-side with the Week 1 one, rather than inventing
+# a new flat convention.
+#
+# IMPORTANT: this trains under the IDENTITY channel (quantize ->
+# dequantize -> decoder). There is no [channel] snr_db here the way
+# week1_overfit.yaml has one, because no channel noise is injected this
+# phase -- see af_conditioning.nominal_snr_db below instead, which is a
+# different thing (an AF-module input, not a noise level). See
+# models/adjsccq.py's module docstring for the full reasoning. A
+# checkpoint from this config is NOT expected to be robust to AWGN or
+# packet erasure without a separate retraining run.
+
+seed: 42
+
+data:
+  n_overfit_images: 10
+  batch_size: 10
+
+model:
+  k_over_n: 0.16666667      # 1/6, matches week1_overfit.yaml
+  image_size: 32
+
+quantizer:
+  num_levels: 256            # -> 1 byte -> 1 future GF(2^8) RS symbol per latent scalar
+  init_range: [-3.0, 3.0]    # overwritten immediately by calibrate_quantizer() at run start
+  calibrate_low_pct: 1.0
+  calibrate_high_pct: 99.0
+  sigma_start: 1.0           # soft-to-hard annealing: initial (softest) sigma_q
+  sigma_end: 0.05            # final (hardest) sigma_q
+  sigma_anneal_epochs: 3000  # anneal linearly over this many epochs, then hold at sigma_end
+
+# AFModule.forward() architecturally requires an snr_db value even
+# though identity-channel mode injects no actual noise. This is that
+# placeholder conditioning input, NOT a channel noise level -- kept
+# separate from a [channel] block on purpose so it's never confused
+# with a real SNR the way week1_overfit.yaml's channel.snr_db is.
+af_conditioning:
+  nominal_snr_db: 10.0       # matches Week 1's overfit-test SNR purely for comparability
+
+train:
+  lr: 0.001
+  epochs: 4000
+  log_every: 500
+
+output:
+  checkpoint_dir: results/checkpoints/adjsccq_identity_overfit
+
+wandb:
+  # TODO: fill in with the same project name used in
+  # configs/week1_overfit.yaml -- I don't have that file, so this is a
+  # placeholder, not a real value. The script will fail at wandb.init()
+  # until this is a real project name.
+  project: "REPLACE_WITH_YOUR_WANDB_PROJECT_NAME"
+
+# This phase does NOT use a fixed pass/fail dB bar like Week 1's 35 dB
+# threshold -- some PSNR loss from 256-level quantization is expected,
+# and the informative number is the DELTA against the unquantized
+# ADJSCC baseline at the same nominal SNR, not an absolute bar.
+report_baseline_psnr_db: null   # fill in from the matching unquantized ADJSCC run before comparing
