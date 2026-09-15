@@ -32,6 +32,9 @@ wandb_logs/
 .DS_Store
 .vscode/
 
+#results
+results/
+
 week1_execution_plan.md
 
 # local untracked files
