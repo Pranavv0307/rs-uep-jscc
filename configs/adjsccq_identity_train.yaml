@@ -31,4 +31,4 @@ output:
 wandb:
   project: rs-uep-jscc
 
-report_baseline_psnr_db: null
+report_baseline_psnr_db: 31.04
