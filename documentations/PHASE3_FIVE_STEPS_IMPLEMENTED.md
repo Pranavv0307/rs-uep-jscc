@@ -10,8 +10,9 @@ The five agreed coding steps are implemented as reusable modules and tests:
 1. Attention scores can be mapped to the flattened ADJSCC latent symbols.
 2. Symbol sorting and exact restoration are implemented and tested.
 3. A dependency-free GF(256) Reed-Solomon erasure wrapper is implemented and tested.
-4. Packet-level importance ranking and high/medium/low tier layout are implemented and reversible.
-5. A non-interleaved uniform-RS end-to-end index pipeline is implemented and tested.
+4. Symbol-level importance ranking and high/medium/low tier layout are implemented and reversible.
+5. Non-interleaved uniform-RS and tier-wise importance-aware RS index pipelines are implemented and tested.
+
 
 The current implementation operates on the quantizer's byte indices. One quantized index is one GF(256) symbol, which is one byte.
 
@@ -85,7 +86,7 @@ Tests:
 
 ### `coding/tiering.py`
 
-Provides packet-level importance layout:
+Provides symbol-level importance layout:
 
 ```python
 layout = build_packet_tier_layout(
@@ -98,14 +99,13 @@ layout = build_packet_tier_layout(
 
 It:
 
-1. groups symbols into packets;
-2. averages symbol importance within each packet;
-3. sorts packets from highest to lowest importance;
-4. assigns high, medium, and low tier IDs;
-5. stores the packet permutation;
-6. restores sorted packets to the original decoder order.
+1. pairs each quantized symbol with its expanded channel importance;
+2. sorts symbols from highest to lowest importance;
+3. assigns contiguous high, medium, and low symbol tiers;
+4. stores the symbol permutation;
+5. restores sorted symbols to the original decoder order.
 
-The symbols are not permanently rearranged. Sorting is only a coding view; `layout.restore()` returns the original latent packet order.
+The symbols are not permanently rearranged. Sorting is only a coding view; `layout.restore()` returns the original latent order. The module retains the older packet-average helper for compatibility, but the importance-aware pipeline uses symbol-first tiering.
 
 ### `tests/test_tiering.py`
 
@@ -119,7 +119,7 @@ Tests:
 
 ### `coding/rs_pipeline.py`
 
-Provides the non-interleaved uniform-RS baseline:
+Provides both the non-interleaved uniform-RS baseline and the symbol-first tiered-RS path:
 
 ```python
 encoded = encode_uniform(indices, n=96, k=64, packet_size=32)
@@ -130,9 +130,9 @@ Encoding:
 
 ```text
 (B, L) byte indices
-    -> pad to complete k-symbol blocks
-    -> RS encode each k-symbol block into n symbols
-    -> packetize each contiguous encoded stream
+    -> sort symbols by importance and split into tiers
+    -> RS encode each tier with its own `(n, k)` rate
+    -> packetize the concatenated encoded tier streams
 ```
 
 Decoding:
@@ -155,15 +155,19 @@ Tests:
 - expected packet count;
 - recovery from one lost packet in a codeword.
 
-## Current Concrete Format
+## Current Concrete Formats
 
 The default pipeline uses:
+
+```text
+Uniform baseline:
 
 ```text
 RS code:       RS(96, 64)
 packet size:   32 GF(256) symbols
 interleaving:  none
 latent length: 1024 symbols
+```
 ```
 
 One codeword is:
@@ -180,7 +184,7 @@ Packet 1: codeword symbols 32..63
 Packet 2: codeword symbols 64..95
 ```
 
-For one 1024-symbol latent vector:
+For one 1024-symbol latent vector, the uniform baseline is:
 
 ```text
 1024 data symbols
@@ -197,6 +201,18 @@ The overhead is:
 
 One lost packet erases 32 symbols. `RS(96, 64)` has 32 parity symbols, so one lost packet per codeword is recoverable. Two lost packets from the same codeword exceed the known-erasure capacity.
 
+The implemented importance-aware default is:
+
+```text
+high tier:   256 data symbols -> 4 x RS(128,64) = 512 transmitted symbols
+medium tier: 256 data symbols -> 4 x RS(96,64)  = 384 transmitted symbols
+low tier:    512 data symbols -> 8 x RS(80,64)  = 640 transmitted symbols
+total:       1024 data symbols -> 1536 transmitted symbols
+packet size: 16 symbols
+```
+
+The tier-wise RS rates are implemented and total `512 + 384 + 640 = 1536` transmitted symbols, exactly matching the uniform baseline budget. The current tests validate ordering, coding, decoding, restoration, and the equal packet count; final image-quality comparisons are still pending.
+
 ## What Is Not Yet Complete
 
 These five steps establish the correct coding foundation, but they do not yet constitute the final research result.
@@ -211,7 +227,7 @@ Not yet implemented:
 - replacement of the placeholder in `experiments/toy_demo.py`;
 - PSNR/SSIM result tables under packet erasures.
 
-The reason is deliberate: the packet-level attention mapping and reversible layout are now available, but the final tier code rates must be selected with an exact equal-transmission-budget calculation. Implementing unequal rates before that calculation would risk comparing methods with different overhead.
+The reason is deliberate: the symbol-level mapping and tier-wise coding path are now available with equal symbol budget, but final image-quality comparisons and trained-checkpoint experiments are still pending.
 
 ## Validation Performed
 
@@ -245,7 +261,7 @@ Implement the importance-aware rate allocation on top of this foundation:
 
 1. choose tier data block counts;
 2. choose per-tier `(n, k)` rates;
-3. prove total transmitted symbols equal the uniform `1536`-symbol budget;
+3. verify the tier allocation remains exactly equal to the uniform `1536`-symbol budget;
 4. encode and decode each tier with its selected rate;
 5. restore original packet order;
 6. compare failed codewords and reconstruction quality against uniform RS.

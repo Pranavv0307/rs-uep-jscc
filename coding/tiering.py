@@ -1,4 +1,4 @@
-"""Packet-level importance ranking and reversible tier layout."""
+"""Symbol-level importance ranking and reversible tier layout."""
 
 from dataclasses import dataclass
 from typing import Dict, Sequence, Tuple
@@ -6,8 +6,27 @@ from typing import Dict, Sequence, Tuple
 import torch
 
 @dataclass
+class SymbolTierLayout:
+    """Sorted symbol view used by tier coding, with restore metadata."""
+
+    sorted_symbols: torch.Tensor
+    sorted_importance: torch.Tensor
+    symbol_permutation: torch.Tensor
+    tier_ids: torch.Tensor
+    tier_slices: Dict[int, Tuple[int, int]]
+
+    def restore(self, sorted_symbols: torch.Tensor) -> torch.Tensor:
+        """Restore sorted symbols to the original latent order."""
+        if sorted_symbols.shape != self.sorted_symbols.shape:
+            raise ValueError("sorted_symbols must match the layout shape")
+        restored = torch.empty_like(sorted_symbols)
+        restored.scatter_(1, self.symbol_permutation, sorted_symbols)
+        return restored
+
+
+@dataclass
 class PacketTierLayout:
-    """Sorted packet view used by coding, with enough metadata to restore it."""
+    """Compatibility view for experiments that already have packets."""
 
     sorted_symbols: torch.Tensor
     sorted_packet_importance: torch.Tensor
@@ -17,7 +36,6 @@ class PacketTierLayout:
     packet_size: int
 
     def restore(self, sorted_symbols: torch.Tensor) -> torch.Tensor:
-        """Restore sorted packets to the original packet order."""
         if sorted_symbols.shape != self.sorted_symbols.shape:
             raise ValueError("sorted_symbols must match the layout shape")
         restored = torch.empty_like(sorted_symbols)
@@ -29,6 +47,45 @@ class PacketTierLayout:
             sorted_packets,
         )
         return restored.reshape_as(sorted_symbols)
+
+
+def build_symbol_tier_layout(
+    symbols: torch.Tensor,
+    importance: torch.Tensor,
+    tier_lengths: Sequence[int],
+) -> SymbolTierLayout:
+    """Sort symbols by importance and assign contiguous symbol tiers.
+
+    ``tier_lengths`` are data-symbol counts in descending importance order.
+    Keeping these lengths explicit lets the RS layer choose code rates and
+    prove the total transmission budget before any packets are created.
+    """
+    if symbols.shape != importance.shape or symbols.dim() != 2:
+        raise ValueError("symbols and importance must have the same shape (B, L)")
+    if len(tier_lengths) != 3 or any(length <= 0 for length in tier_lengths):
+        raise ValueError("tier_lengths must contain three positive values")
+    if sum(tier_lengths) != symbols.shape[1]:
+        raise ValueError("tier_lengths must sum to the latent symbol count")
+
+    permutation = torch.argsort(importance, dim=1, descending=True, stable=True)
+    sorted_symbols = symbols.gather(1, permutation)
+    sorted_importance = importance.gather(1, permutation)
+    boundaries = (0, tier_lengths[0], tier_lengths[0] + tier_lengths[1], symbols.shape[1])
+    tier_ids = torch.empty_like(permutation)
+    tier_ids[:, boundaries[0]:boundaries[1]] = 0
+    tier_ids[:, boundaries[1]:boundaries[2]] = 1
+    tier_ids[:, boundaries[2]:boundaries[3]] = 2
+    return SymbolTierLayout(
+        sorted_symbols=sorted_symbols,
+        sorted_importance=sorted_importance,
+        symbol_permutation=permutation,
+        tier_ids=tier_ids,
+        tier_slices={
+            0: (boundaries[0], boundaries[1]),
+            1: (boundaries[1], boundaries[2]),
+            2: (boundaries[2], boundaries[3]),
+        },
+    )
 
 
 def packet_importance(importance: torch.Tensor, packet_size: int) -> torch.Tensor:

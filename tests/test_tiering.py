@@ -1,6 +1,6 @@
 import torch
 
-from coding.tiering import build_packet_tier_layout, packet_importance
+from coding.tiering import build_packet_tier_layout, build_symbol_tier_layout, packet_importance
 
 
 def test_packet_importance_averages_symbol_scores():
@@ -26,3 +26,13 @@ def test_tiering_rejects_mixed_shapes():
         assert False, "expected shape validation"
     except ValueError:
         pass
+
+
+def test_symbol_tiering_sorts_before_packetization_and_restores():
+    symbols = torch.tensor([[10, 11, 20, 21, 30, 31]])
+    importance = torch.tensor([[0.1, 0.2, 0.9, 0.8, 0.5, 0.4]])
+    layout = build_symbol_tier_layout(symbols, importance, tier_lengths=(2, 2, 2))
+
+    assert layout.sorted_symbols.tolist() == [[20, 21, 30, 31, 11, 10]]
+    assert layout.tier_ids.tolist() == [[0, 0, 1, 1, 2, 2]]
+    assert torch.equal(layout.restore(layout.sorted_symbols), symbols)
