@@ -204,18 +204,37 @@ def main():
     parser.add_argument("--include_random_control", action="store_true")
     parser.add_argument("--output", default="results/eval/rs_uep_sweep.json")
     parser.add_argument("--plot_output", default="results/eval/rs_uep_sweep.png")
+    parser.add_argument("--wandb", action="store_true", help="Log results and plots to wandb")
+    parser.add_argument("--wandb_project", default="rs-uep-jscc")
     args = parser.parse_args()
 
     rows = evaluate(args)
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     with open(args.output, "w") as handle:
         json.dump(rows, handle, indent=2)
+    
     if args.plot_output:
         os.makedirs(os.path.dirname(args.plot_output), exist_ok=True)
         write_plot(rows, args.plot_output)
+        
     print(f"saved {len(rows)} rows -> {args.output}")
     if args.plot_output:
         print(f"saved plot -> {args.plot_output}")
+
+    if args.wandb:
+        import wandb
+        wandb.init(project=args.wandb_project, config=vars(args))
+        if rows:
+            # Log the full dataset as a wandb Table so it can be grouped/graphed in the UI
+            table = wandb.Table(columns=list(rows[0].keys()))
+            for row in rows:
+                table.add_data(*[row[k] for k in table.columns])
+            wandb.log({"rs_uep_sweep_data": table})
+            
+        if args.plot_output:
+            # Log the generated matplotlib figure directly
+            wandb.log({"rs_uep_sweep_plot": wandb.Image(args.plot_output)})
+        wandb.finish()
 
 
 if __name__ == "__main__":
