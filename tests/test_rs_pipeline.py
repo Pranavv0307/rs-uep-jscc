@@ -12,6 +12,7 @@ from coding.rs_pipeline import (
     dequantize_with_fallback,
     encode_blocks,
     random_channel_order,
+    SCHEME_CANDIDATES,
 )
 from models.quantizer import ScalarSoftToHardQuantizer
 
@@ -36,6 +37,33 @@ def test_default_schemes_share_the_transmission_budget():
     assert UNIFORM_RS.data_symbols == IMPORTANCE_AWARE_RS.data_symbols == NO_RS.data_symbols == 1024
     assert UNIFORM_RS.overhead == pytest.approx(0.5)
     assert NO_RS.overhead == 0.0
+
+
+def test_candidate_schemes_share_the_fixed_budget_and_data_shape():
+    assert set(SCHEME_CANDIDATES) == {
+        "uniform",
+        "two_tier_25_75",
+        "two_tier_50_50",
+        "two_tier_75_25",
+        "three_tier_25_25_50",
+        "three_tier_25_50_25",
+        "three_tier_50_25_25",
+    }
+    for scheme in SCHEME_CANDIDATES.values():
+        assert scheme.data_symbols == 1024
+        assert scheme.total_packets == 96
+        assert scheme.packet_size == 16
+        assert scheme.transmitted_symbols == 1536
+
+
+@pytest.mark.parametrize("scheme", list(SCHEME_CANDIDATES.values()))
+def test_candidate_schemes_round_trip_for_a_batch(scheme):
+    indices, order, _ = _latent(batch_size=2)
+    packets = encode_blocks(indices, scheme, order)
+    decoded = decode_blocks(packets, scheme, order)
+    assert torch.equal(decoded.indices, indices)
+    assert not decoded.failed.any()
+    assert not decoded.block_failed.any()
 
 
 @pytest.mark.parametrize("scheme", [NO_RS, UNIFORM_RS, IMPORTANCE_AWARE_RS])

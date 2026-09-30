@@ -95,6 +95,19 @@ UNIFORM_RS = CodingScheme(tiers=((96, 64),))
 # 16 / 16 / 32 data packets = top 4 / next 4 / bottom 8 channels; 96 packets total.
 IMPORTANCE_AWARE_RS = CodingScheme(tiers=((32, 16), (24, 16), (40, 32)))
 
+# Candidate fixed-budget allocations for the validation study. Data packets
+# are multiples of four so each tier remains aligned to whole 64-symbol
+# latent channels when packet_size is 16.
+SCHEME_CANDIDATES = {
+    "uniform": UNIFORM_RS,
+    "two_tier_25_75": CodingScheme(tiers=((32, 16), (64, 48))),
+    "two_tier_50_50": CodingScheme(tiers=((48, 32), (48, 32))),
+    "two_tier_75_25": CodingScheme(tiers=((64, 48), (32, 16))),
+    "three_tier_25_25_50": IMPORTANCE_AWARE_RS,
+    "three_tier_25_50_25": CodingScheme(tiers=((32, 16), (48, 32), (16, 16))),
+    "three_tier_50_25_25": CodingScheme(tiers=((48, 32), (24, 16), (24, 16))),
+}
+
 
 @dataclass
 class DecodedBatch:

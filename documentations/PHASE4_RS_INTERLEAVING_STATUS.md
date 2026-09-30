@@ -343,3 +343,115 @@ for scheme, side_info in ((UNIFORM_RS, None), (IMPORTANCE_AWARE_RS, order)):
     with torch.no_grad():
         x_hat = decoder(dequantize_with_fallback(encoder.quantizer, decoded.indices, decoded.failed), snr)
 ```
+
+   ---
+
+   ## 11. Engineering Completion Addendum (2026-09-30)
+
+   This addendum records the follow-up engineering work without rewriting the
+   earlier session record.
+
+   ### 11.1 Evaluation assumptions and accounting
+
+   The first study keeps channel-order side information on a reliable control
+   path. A ranking contains 16 channel identifiers, represented as **16 bytes
+   per image**. The evaluator reports this separately and includes it in the
+   total-overhead figure for tiered methods.
+
+   For the fixed 96-packet protected schemes:
+
+   | Quantity | Value |
+   | --- | ---: |
+   | Data symbols | 1024 bytes |
+   | RS packet symbols | 1536 bytes |
+   | Coding overhead | 50.0% |
+   | Reliable side information | 16 bytes/image |
+   | Total transmitted bytes | 1552 bytes/image |
+   | Total overhead including side information | 51.5625% |
+
+   The no-RS control has 1024 coding bytes and does not require a channel
+   ranking. Its total is therefore reported as 1024 bytes plus zero side-info
+   bytes. Side information is still not subjected to packet erasures in this
+   study.
+
+   ### 11.2 Candidate rate allocations
+
+   All candidates use 16-symbol packets, carry 1024 data symbols, and transmit
+   96 packets. Tier data sizes are channel-aligned: every four packets represent
+   one 64-symbol latent channel.
+
+   | Name | Tier data share | RS packet tiers `(n, k)` | Purpose |
+   | --- | --- | --- | --- |
+   | `uniform` | 100% | `(96, 64)` | Equal-protection baseline |
+   | `two_tier_25_75` | 25% / 75% | `(32, 16)`, `(64, 48)` | Strong protection for the top quarter |
+   | `two_tier_50_50` | 50% / 50% | `(48, 32)`, `(48, 32)` | Balanced two-tier allocation |
+   | `two_tier_75_25` | 75% / 25% | `(64, 48)`, `(32, 16)` | Strong protection for the top three quarters |
+   | `three_tier_25_25_50` | 25% / 25% / 50% | `(32, 16)`, `(24, 16)`, `(40, 32)` | Existing attention-aware baseline |
+   | `three_tier_25_50_25` | 25% / 50% / 25% | `(32, 16)`, `(48, 32)`, `(16, 16)` | Strong protection for the middle tier |
+   | `three_tier_50_25_25` | 50% / 25% / 25% | `(48, 32)`, `(24, 16)`, `(24, 16)` | Strong protection for the top half |
+
+   The names refer to data-symbol shares, not packet shares. Each scheme is
+   available through `coding.rs_pipeline.SCHEME_CANDIDATES`, so the evaluator and
+   tests use the same definitions.
+
+   ### 11.3 Reproducible evaluator
+
+   `experiments/eval_rs_uep.py` now provides the benchmark path. It:
+
+   - uses the real ADJSCC-Q identity checkpoint and index/dequantization path;
+   - compares all candidate splits at the same packet budget;
+   - reuses one 96-packet Bernoulli mask for every protected method at each
+      image batch, erasure rate, and seed;
+   - uses a separate 64-packet mask for no-RS because its packet count differs;
+   - evaluates attention-ranked tiers and optional random-tier controls;
+   - records mean/std PSNR, mean SSIM, tier block-failure rates, failed-symbol
+      fraction, realized erasure rate, packet budget, side-info bytes, and both
+      coding-only and total overhead;
+   - writes JSON rows and a PSNR-versus-erasure-rate plot.
+
+   Use a short validation run while selecting allocations:
+
+   ```bash
+   .venv/bin/python -m experiments.eval_rs_uep \
+      --max_images 1024 --seeds 0,1,2 --include_no_rs --include_random_control
+   ```
+
+   The default output files are:
+
+   ```text
+   results/eval/rs_uep_sweep.json
+   results/eval/rs_uep_sweep.png
+   ```
+
+   The final test-set sweep should be run only after selecting candidate
+   allocations on a validation subset. The default evaluator rates are
+   `0.0, 0.1, 0.2, 0.3, 0.35, 0.4, 0.45, 0.5` and default seeds are five
+   independent channel seeds (`0` through `4`).
+
+   ### 11.4 Demo and dependency cleanup
+
+   The old repetition-code `apply_erasure_placeholder()` was removed from
+   `experiments/toy_demo.py`. That demo is now explicitly AWGN-only; it no longer
+   accepts `--erasure_rate` or `--rs_protection`, so those flags cannot be
+   mistaken for the real RS implementation. Packet-erasure experiments belong to
+   `eval_rs_uep.py`.
+
+   `requirements-local.txt` now declares the packages imported by tests and
+   experiments: `pytest`, `PyYAML`, `scipy`, and `wandb`, pinned alongside the
+   existing local environment. The pinned PyTorch/numpy combination is validated
+   with Python 3.11; Python 3.14 is not a supported local environment for these
+   pins.
+
+   ### 11.5 Validation status
+
+   The new candidate definitions round-trip for batch size two and preserve the
+   1024-data-symbol / 1536-transmitted-symbol contract. Focused validation after
+   the implementation changes:
+
+   ```text
+   tests/test_rs_pipeline.py tests/test_erasure_channel.py: 34 passed
+   toy_demo.py and eval_rs_uep.py: Python syntax check passed
+   ```
+
+   The complete repository suite remains the required final check before a
+   results report is treated as complete.
