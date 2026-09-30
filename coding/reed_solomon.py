@@ -9,6 +9,8 @@ silently treated as erasures.
 from functools import lru_cache
 from typing import Iterable, List, Sequence, Tuple
 
+import numpy as np
+
 
 _FIELD_SIZE = 256
 _PRIMITIVE_POLYNOMIAL = 0x11D
@@ -183,3 +185,92 @@ def decode(
     if bytes(recovered) != expected:
         return bytes(values[:k]), False
     return bytes(recovered[:k]), True
+
+# ---------------------------------------------------------------------------
+# Block (packet-interleaved) coding
+#
+# A block is a (rows, columns) uint8 matrix whose rows are packets. Every
+# column is one systematic RS(n, k) codeword, so each packet carries exactly
+# one symbol of every codeword and a lost packet costs each codeword a single
+# erasure. All columns share the same erased rows, so the erasure system is
+# solved once per block and applied to every column at the same time.
+# ---------------------------------------------------------------------------
+
+_EXP_NP = np.array(_EXP, dtype=np.int32)
+_LOG_NP = np.array([0 if value < 0 else value for value in _LOG], dtype=np.int32)
+
+
+def _gf_matmul(left: np.ndarray, right: np.ndarray) -> np.ndarray:
+    """GF(256) matrix product of uint8 matrices ``left @ right``."""
+    left = np.asarray(left, dtype=np.uint8)
+    right = np.asarray(right, dtype=np.uint8)
+    products = _EXP_NP[_LOG_NP[left][:, :, None] + _LOG_NP[right][None, :, :]]
+    products[(left == 0)[:, :, None] | (right == 0)[None, :, :]] = 0
+    return np.bitwise_xor.reduce(products, axis=1).astype(np.uint8)
+
+
+def _gf_solve(matrix: np.ndarray, rhs: np.ndarray) -> Tuple[np.ndarray, bool]:
+    """Solve ``matrix @ x = rhs`` over GF(256) for a square ``matrix``."""
+    size = matrix.shape[0]
+    augmented = np.concatenate([matrix, rhs], axis=1).astype(np.uint8)
+    for column in range(size):
+        pivot = next((row for row in range(column, size) if augmented[row, column]), None)
+        if pivot is None:
+            return rhs, False
+        augmented[[column, pivot]] = augmented[[pivot, column]]
+        inverse = gf_pow(int(augmented[column, column]), 254)
+        augmented[column] = _gf_matmul(np.array([[inverse]], dtype=np.uint8), augmented[column:column + 1])[0]
+        for row in range(size):
+            factor = int(augmented[row, column])
+            if row != column and factor:
+                scaled = _gf_matmul(np.array([[factor]], dtype=np.uint8), augmented[column:column + 1])[0]
+                augmented[row] ^= scaled
+    return augmented[:, size:], True
+
+
+def encode_block(data_rows: np.ndarray, n: int) -> np.ndarray:
+    """Append ``n - k`` parity rows to ``k`` data rows; returns ``(n, columns)``."""
+    data_rows = np.asarray(data_rows, dtype=np.uint8)
+    if data_rows.ndim != 2:
+        raise ValueError("data_rows must have shape (k, columns)")
+    k = data_rows.shape[0]
+    nsym = _validate_parameters(n, k)
+    parity = _gf_matmul(np.array(_parity_matrix(k, nsym), dtype=np.uint8), data_rows)
+    return np.concatenate([data_rows, parity], axis=0)
+
+
+def decode_block(block: np.ndarray, erased_rows: Sequence[int], n: int, k: int) -> Tuple[np.ndarray, bool]:
+    """Recover the ``k`` data rows of a block with known erased rows.
+
+    Returns ``(data_rows, success)``. On failure the returned data rows are
+    the received rows unchanged; erased rows among them hold no valid data.
+    """
+    nsym = _validate_parameters(n, k)
+    block = np.asarray(block, dtype=np.uint8)
+    if block.ndim != 2 or block.shape[0] != n:
+        raise ValueError("block must have shape (n, columns)")
+    erased = sorted(set(int(row) for row in erased_rows))
+    if any(row < 0 or row >= n for row in erased):
+        raise ValueError("erased rows must be valid block rows")
+    data = block[:k].copy()
+    lost_data = [row for row in erased if row < k]
+    if not lost_data:
+        return data, True
+    if len(erased) > nsym:
+        return data, False
+
+    parity_matrix = np.array(_parity_matrix(k, nsym), dtype=np.uint8)
+    received_parity = [index for index in range(nsym) if k + index not in erased][:len(lost_data)]
+    known_data = [row for row in range(k) if row not in lost_data]
+    rhs = block[[k + index for index in received_parity]].copy()
+    if known_data:
+        rhs ^= _gf_matmul(parity_matrix[np.ix_(received_parity, known_data)], data[known_data])
+    solution, success = _gf_solve(parity_matrix[np.ix_(received_parity, lost_data)], rhs)
+    if not success:
+        return data, False
+    data[lost_data] = solution
+
+    received_rows = [row for row in range(n) if row not in erased]
+    if not np.array_equal(encode_block(data, n)[received_rows], block[received_rows]):
+        return block[:k].copy(), False
+    return data, True

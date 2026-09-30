@@ -1,48 +1,26 @@
 """
-Packetization: chunks a quantized ADJSCC-Q latent (the byte-valued `idx`
-tensor from models/quantizer.py's ScalarSoftToHardQuantizer.forward(), or
-equivalently ADJSCCQEncoder(..., return_indices=True)) into fixed-size
-"packets" -- the unit a packet-erasure channel drops or delivers whole,
-per Problem_Statement.pdf's packet-erasure-channel description (Packet 1
-.. Packet 8, some received, some erased).
+Packet container and plain (non-coded) packetization for quantized latents.
 
+`PacketizedLatent` is the transport unit shared by every scheme: a
+(B, num_packets, packet_size) uint8 tensor plus a per-packet erased flag.
+A packet-erasure channel drops or delivers packets whole.
 
+Where things live:
+  - `packetize()` / `depacketize()` below chunk a symbol stream into
+    consecutive packets with no coding. This is only suitable when no RS is
+    applied (the no-protection baseline) or for tests.
+  - Reed-Solomon packetization does NOT use consecutive chunking. It is
+    packet-interleaved: each tier is a block of k data packets plus n-k
+    parity packets, and every RS codeword runs down one column, so each
+    packet carries one symbol of every codeword in its block. See
+    coding/rs_pipeline.py.
+  - Loss decisions are made by coding/erasure_channel.py.
+  - Unrecovered symbols are replaced in latent space by
+    coding/rs_pipeline.py:dequantize_with_fallback, never by trusting the
+    zeroed bytes of an erased packet.
 
-NOT yet implemented here (explicitly out of scope for this file):
-  - Reed-Solomon encoding/decoding (GF(2^8) arithmetic, parity symbols,
-    erasure recovery). That needs the `reedsolo` library; this file has
-    no dependency on it and no RS-specific logic.
-  - The calibrated Bernoulli/Gilbert-Elliott packet-erasure channel
-    simulator described in the 12-week plan's Week 7 deliverable.
-    erase_packets() below is a minimal, seedable erasure applier --
-    enough to test packetize/depacketize round-trips and to eventually
-    replace experiments/toy_demo.py's ad hoc erasure placeholder -- not
-    the calibrated channel model Week 7 asks for.
-  - Any fallback-imputation strategy for symbols an erased packet takes
-    with it (zero-fill / mean-fill / learned). depacketize() returns an
-    explicit erased-symbol mask precisely so that decision stays visible
-    and overridable rather than silently baked in -- see its docstring.
-    That decision is still open per the PHASE3 report's Phase 3 section.
-
-OPEN DESIGN QUESTION, flagged rather than silently decided:
-  How a "packet" (this file's unit of erasure) relates to an RS(n,k)
-  codeword (Phase 5's unit of correction) is not yet decided. Two
-  extremes: (a) one packet == one full RS codeword's worth of data
-  symbols, so losing a packet means losing an entire codeword's data at
-  once and RS's erasure budget must absorb that many erased symbols in
-  one shot; (b) one RS codeword's symbols are interleaved across many
-  packets, so a single packet loss only costs one symbol per codeword,
-  spread thin -- closer to how real systems survive bursty/packet losses,
-  but a packet then has no meaning on its own without the interleaving
-  pattern. This file implements neither: it only does fixed-size,
-  non-interleaved chunking (option (a)'s naive form, with no RS framing
-  at all yet). Revisit before wiring in real RS in Phase 5.
-
-PACKET_SIZE_SYMBOLS below is likewise an arbitrary, documented placeholder
--- it happens to divide the current architecture's latent length exactly
-(k_over_n=1/6, image_size=32 -> k=512 -> 2k=1024 symbols per image;
-1024 / 32 = 32 packets, no padding needed today), but nothing here
-requires that; packetize() pads correctly either way.
+PACKET_SIZE_SYMBOLS is the default chunk size for plain packetization; the
+RS schemes set their own packet size in coding/rs_pipeline.py:CodingScheme.
 """
 from dataclasses import dataclass
 

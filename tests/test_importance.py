@@ -2,6 +2,8 @@ import torch
 
 from coding.importance import (
     attention_to_symbol_importance,
+    channel_order_from_attention,
+    permutation_from_channel_order,
     importance_ranking,
     restore_symbol_order,
     sort_symbols_by_importance,
@@ -38,3 +40,11 @@ def test_sort_and_restore_are_exact_inverses_per_batch():
 def test_ranking_is_descending_and_stable_for_ties():
     importance = torch.tensor([[0.5, 0.9, 0.5, 0.1]])
     assert importance_ranking(importance).tolist() == [[1, 0, 2, 3]]
+
+def test_channel_order_reproduces_symbol_level_ranking():
+    attention = torch.tensor([[0.2, 0.9, 0.5, 0.9], [0.1, 0.3, 0.2, 0.7]])
+    order = channel_order_from_attention(attention)
+    assert order.tolist() == [[1, 3, 2, 0], [3, 1, 2, 0]]
+    permutation = permutation_from_channel_order(order, symbols_per_channel=4)
+    importance = attention_to_symbol_importance(attention, spatial_size=2)
+    assert torch.equal(permutation, importance_ranking(importance))

@@ -67,3 +67,31 @@ def restore_symbol_order(sorted_symbols: torch.Tensor, permutation: torch.Tensor
     restored = torch.empty_like(sorted_symbols)
     restored.scatter_(1, permutation, sorted_symbols)
     return restored
+
+def channel_order_from_attention(attention: torch.Tensor) -> torch.Tensor:
+    """Rank bottleneck channels from most to least important, per sample.
+
+    This ``(B, C)`` ranking is the side information (lookup table) sent to
+    the receiver: with C=16 channels it costs 16 bytes per image, and it is
+    all the receiver needs to rebuild the full symbol permutation.
+    """
+    if attention.dim() != 2:
+        raise ValueError(f"attention must have shape (B, C), got {tuple(attention.shape)}")
+    return torch.argsort(attention, dim=1, descending=True, stable=True)
+
+
+def permutation_from_channel_order(channel_order: torch.Tensor, symbols_per_channel: int) -> torch.Tensor:
+    """Expand a channel ranking into the symbol permutation used for coding.
+
+    Symbols of higher-ranked channels come first; within a channel the
+    original spatial order is kept. This equals
+    ``importance_ranking(attention_to_symbol_importance(attention, ...))``
+    because every symbol of a channel shares that channel's score.
+    """
+    if channel_order.dim() != 2:
+        raise ValueError("channel_order must have shape (B, C)")
+    if symbols_per_channel <= 0:
+        raise ValueError("symbols_per_channel must be positive")
+    offsets = torch.arange(symbols_per_channel, device=channel_order.device)
+    permutation = channel_order.unsqueeze(-1) * symbols_per_channel + offsets
+    return permutation.reshape(channel_order.shape[0], -1)
