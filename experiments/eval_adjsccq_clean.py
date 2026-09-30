@@ -32,6 +32,12 @@ def load_adjsccq_checkpoint(path: str, device: torch.device):
 
     Returns ``(encoder, decoder, config)`` in eval mode.
     """
+    if not os.path.exists(path):
+        alt_path = path.replace("checkpoints", "checkpoints 2")
+        if os.path.exists(alt_path):
+            print(f"Checkpoint not found at {path}, falling back to {alt_path}")
+            path = alt_path
+            
     checkpoint = torch.load(path, map_location=device, weights_only=False)
     cfg = checkpoint["config"]
     encoder = ADJSCCQEncoder(

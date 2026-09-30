@@ -115,6 +115,11 @@ def evaluate(args):
     seeds = _parse_csv_numbers(args.seeds, int)
     results = []
     
+    with open(args.oracle_ranking_file, "r") as f:
+        oracle_data = json.load(f)
+        oracle_ranking = oracle_data["oracle_ranking_channels"]
+    print(f"Loaded Oracle Ranking: {oracle_ranking}")
+    
     import itertools
     import wandb
     try:
@@ -141,8 +146,9 @@ def evaluate(args):
                     x = x[:remaining]
                 x = x.to(device)
                 batch_size = x.shape[0]
-                _, attention, indices = encoder(x, snr_db, return_attn=True, return_indices=True)
-                attention_order = channel_order_from_attention(attention["af5_bottleneck"])
+                _, indices = encoder(x, snr_db, return_attn=False, return_indices=True)
+                oracle_order = torch.tensor(oracle_ranking, device=device).unsqueeze(0).expand(batch_size, -1)
+                
                 mask_generator = torch.Generator().manual_seed(seed * 100000 + batch_index)
                 mask_96 = sample_erasure_mask(batch_size, 96, erasure_rate, mask_generator)
                 mask_64 = sample_erasure_mask(batch_size, 64, erasure_rate, mask_generator)
@@ -151,7 +157,7 @@ def evaluate(args):
                     scheme = _method_scheme(method)
                     order_generator = torch.Generator().manual_seed(seed * 100000 + batch_index + 50000)
                     order, side_info_bytes = _method_order(
-                        method, attention_order, batch_size, order_generator
+                        method, oracle_order, batch_size, order_generator
                     )
                     packets = encode_blocks(indices, scheme, order)
                     mask = mask_64 if scheme is NO_RS else mask_96
@@ -246,9 +252,10 @@ def main():
     parser.add_argument("--seeds", default="0,1,2,3,4")
     parser.add_argument("--include_no_rs", action="store_true")
     parser.add_argument("--include_random_control", action="store_true")
-    parser.add_argument("--output", default="results/eval/rs_uep_sweep.json")
-    parser.add_argument("--plot_output", default="results/eval/rs_uep_sweep.png")
-    parser.add_argument("--markdown_output", default="results/eval/rs_uep_sweep.md")
+    parser.add_argument("--oracle_ranking_file", default="results/eval/oracle_ranking.json")
+    parser.add_argument("--output", default="results/eval/rs_uep_oracle_sweep.json")
+    parser.add_argument("--plot_output", default="results/eval/rs_uep_oracle_sweep.png")
+    parser.add_argument("--markdown_output", default="results/eval/rs_uep_oracle_sweep.md")
     parser.add_argument("--wandb", action="store_true", help="Log results and plots to wandb")
     parser.add_argument("--wandb_project", default="rs-uep-jscc")
     args = parser.parse_args()
