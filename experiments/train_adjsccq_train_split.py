@@ -21,6 +21,7 @@ import torch.nn as nn
 import yaml
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
+from tqdm import tqdm
 
 from coding.erasure_channel import apply_erasure_mask, sample_erasure_mask
 from coding.importance import channel_order_from_attention
@@ -116,7 +117,7 @@ def evaluate_clean(encoder, decoder, loader, snr_db: float, device,
     pixel_count = image_count = 0
     levels = torch.zeros(encoder.quantizer.num_levels, dtype=torch.long)
 
-    for x, _ in loader:
+    for x, _ in tqdm(loader, desc="Clean Eval", leave=False):
         if max_images is not None:
             remaining = max_images - image_count
             if remaining <= 0:
@@ -158,7 +159,7 @@ def compute_oracle_ranking(encoder, decoder, loader, snr_db: float, device,
     ssim_drop = torch.zeros(channel_count, dtype=torch.float64)
     image_count = 0
 
-    for x, _ in loader:
+    for x, _ in tqdm(loader, desc="Computing Oracle", leave=False):
         if max_images is not None:
             remaining = max_images - image_count
             if remaining <= 0:
@@ -273,7 +274,7 @@ def evaluate_rs(encoder, decoder, loader, snr_db: float, device,
                     for name in scheme_names
                 }
                 image_count = 0
-                for batch_index, (x, _) in enumerate(loader):
+                for batch_index, (x, _) in enumerate(tqdm(loader, desc=f"RS-UEP {method} r={rate} s={seed}", leave=False)):
                     if max_images is not None:
                         remaining = max_images - image_count
                         if remaining <= 0:
@@ -425,7 +426,7 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         encoder.quantizer.set_sigma(sigma)
         encoder.train()
         decoder.train()
-        for x, _ in train_loader:
+        for x, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{cfg['train']['epochs']}", leave=False):
             x = x.to(device)
             optimizer.zero_grad()
             reconstruction = decoder(encoder(x, nominal_snr_db), nominal_snr_db)
