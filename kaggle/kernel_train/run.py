@@ -19,7 +19,7 @@ import time
 
 REPO_URL = "https://github.com/Subhashhari/rs-uep-jscc.git"
 BRANCH = "phase0-5-pipeline"
-JOB = "smoke"  # smoke | train_base | train_phase2 | train_kn
+JOB = "smoke"  # tests | timing | smoke | train_base | train_phase2 | train_kn | train_all
 
 WORK = "/kaggle/working"
 CODE = "/tmp/repo"  # outside /kaggle/working, so the clone and the dataset are not saved as outputs
@@ -48,14 +48,23 @@ def sync() -> None:
         say(f"WARNING: could not write status.json: {error!r}")
 
 
-def step(name: str, command: list, required: bool = True) -> bool:
+def step(name: str, command: list, required: bool = True, timeout: float = None) -> bool:
+    """Run one step with its own log. A step that exceeds ``timeout`` seconds is killed (exit 124), so a
+    kernel can never hang silently: it always ends and reports where the time went."""
     os.makedirs(f"{OUT}/logs", exist_ok=True)
     say(f"START {name}: {' '.join(command)}")
     started = time.time()
     environment = {**os.environ, "WANDB_MODE": "offline", "WANDB_SILENT": "true", "PYTHONUNBUFFERED": "1",
                    "PYTHONUTF8": "1", "WANDB_DIR": f"{OUT}/wandb"}
     with open(f"{OUT}/logs/{name}.log", "w", encoding="utf-8") as log:
-        code = subprocess.call(command, cwd=CODE, stdout=log, stderr=subprocess.STDOUT, env=environment)
+        try:
+            code = subprocess.call(command, cwd=CODE, stdout=log, stderr=subprocess.STDOUT, env=environment,
+                                   timeout=timeout)
+        except subprocess.TimeoutExpired:
+            code = 124
+            log.write(f"
+KILLED after {timeout} s (timeout)
+")
     seconds = round(time.time() - started, 1)
     STATUS["steps"].append({"name": name, "command": command, "returncode": code, "seconds": seconds})
     say(f"END   {name}: exit {code} in {seconds}s")
@@ -91,12 +100,20 @@ def main() -> None:
     subprocess.call(["bash", "-c", f"nvidia-smi > {OUT}/nvidia-smi.txt 2>&1"])
     step("download_cifar10", [PY, "-m", "experiments.download_data", "--cifar10", "--data_dir", "./data"])
 
-    if JOB == "smoke":
-        step("pytest", [PY, "-m", "pytest", "tests", "-q", "-p", "no:cacheprovider", "--tb=short"], required=False)
+    if JOB == "tests":
+        step("pytest", [PY, "-m", "pytest", "tests", "-q", "-p", "no:cacheprovider", "--tb=short", "-x"],
+             required=False, timeout=1500)
+    elif JOB == "timing":
+        step("benchmark", [PY, "-m", "experiments.benchmark_training", "--data_dir", "./data"], required=False,
+             timeout=900)
+    elif JOB == "smoke":
+        step("pytest", [PY, "-m", "pytest", "tests", "-q", "-p", "no:cacheprovider", "--tb=short"], required=False,
+             timeout=1500)
         step("train_smoke", [PY, "-m", "experiments.train_adjsccq_train_split", "--seed", "7", "--split_seed", "42",
                              "--epochs", "2", "--skip_rs_sweep", "--oracle_max_images", "500",
                              "--eval_max_images", "500", "--data_dir", "./data", "--output_dir", "results/smoke_train",
-                             "--wandb", "--wandb_project", "rs-uep-jscc", "--wandb_name", "kaggle-smoke"])
+                             "--wandb", "--wandb_project", "rs-uep-jscc", "--wandb_name", "kaggle-smoke"],
+             timeout=2400)
     elif JOB in ("train_base", "train_all"):
         for seed in (42, 100, 2024):
             train(seed, f"models/seed{seed}")
@@ -113,7 +130,7 @@ def main() -> None:
     if JOB in ("train_kn", "train_all"):
         for ratio, tag in ((0.0625, "1_16"), (0.083333333, "1_12"), (0.333333333, "1_3")):
             train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
-    if JOB not in ("smoke", "train_base", "train_phase2", "train_kn", "train_all"):
+    if JOB not in ("tests", "timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all"):
         raise SystemExit(f"unknown job {JOB}")
     STATUS["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     sync()
