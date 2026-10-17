@@ -95,6 +95,7 @@ def _group_by_source(methods: Sequence[str], baseline: str) -> Dict[str, List[st
 
 def sweep_insights(summary: Sequence[dict], paired: Sequence[dict], x_key: str = "erasure_rate",
                    baseline: str = "uniform", high_loss_from: float = 0.35) -> List[str]:
+    # high_loss_from is the first x value counted as the "high-loss region" (0.35 for loss sweeps, 0 for bursts)
     """Plain-language findings computed from the numbers (never hand-written)."""
     notes: List[str] = []
     if not summary:
@@ -156,9 +157,11 @@ def sweep_insights(summary: Sequence[dict], paired: Sequence[dict], x_key: str =
             notes.append("Importance sources ranked by their best scheme's mean gain over "
                          f"{x_key} >= {high_loss_from:g}: " + ", ".join(f"{s} {g:+.2f} dB" for s, g in ranked) + ".")
             reference = score.get("oracle") or score.get("oracle_perimage")
-            if reference and reference > 0:
-                share = ", ".join(f"{s} {100 * g / reference:.0f}%" for s, g in ranked if g != reference)
-                notes.append(f"Share of the oracle gain captured: {share}.")
+            if reference and reference >= 0.25:  # a share of a negligible gain is meaningless
+                share = ", ".join(f"{s} {100 * g / reference:.0f}%" for s, g in ranked
+                                  if g != reference and "#" not in s and not s.startswith("oracle"))
+                if share:
+                    notes.append(f"Share of the oracle gain captured: {share}.")
             if "random" in score and "oracle" in score:
                 notes.append(f"Random-order control gains {score['random']:+.2f} dB versus oracle "
                              f"{score['oracle']:+.2f} dB, so the benefit comes from *which* channels are "
@@ -277,14 +280,15 @@ def write_sweep_outputs(out_dir: str, name: str, rows: List[dict], metadata: dic
                         baseline: str = "uniform", title: str = "Sweep results",
                         xlabel: str = "Packet erasure rate", cdf_rate: float = 0.4,
                         metrics: Optional[Sequence[str]] = None, extra_keys: Sequence[str] = (),
-                        paired_group: Sequence[str] = ("erasure_rate",)) -> Dict[str, object]:
+                        paired_group: Sequence[str] = ("erasure_rate",),
+                        high_from: float = 0.35) -> Dict[str, object]:
     """Write JSON + markdown + figures + insights; return their paths and the computed tables."""
     from experiments.pipeline_core import SUMMARY_METRICS
 
     os.makedirs(out_dir, exist_ok=True)
     summary = aggregate_over_seeds(rows, group_keys=group_keys, metrics=metrics or SUMMARY_METRICS)
     paired = paired_vs_baseline(rows, baseline=baseline, group_keys=paired_group)
-    insights = sweep_insights(summary, paired, x_key=x_key, baseline=baseline)
+    insights = sweep_insights(summary, paired, x_key=x_key, baseline=baseline, high_loss_from=high_from)
 
     json_path = os.path.join(out_dir, f"{name}.json")
     write_json(json_path, {"metadata": metadata, "seed_summary": summary, "paired_vs_baseline": paired,

@@ -288,3 +288,14 @@ def test_pipeline_steps_are_unique_well_formed_and_dry():
 ])
 def test_every_script_imports_cleanly(module):
     assert importlib.import_module(module) is not None
+
+
+def test_kaggle_launchers_compile():
+    """A syntax error in a launcher only shows up after a queued Kaggle run; catch it here."""
+    import glob
+    import py_compile
+
+    launchers = glob.glob("kaggle/kernel_train/run.py") + glob.glob("kaggle/kernels/*/run.py")
+    assert launchers
+    for path in launchers:
+        py_compile.compile(path, doraise=True)

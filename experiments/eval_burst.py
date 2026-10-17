@@ -178,7 +178,7 @@ def main():
             group_keys=("method", "burst_length"), paired_group=("burst_length",),
             title=f"Burst-loss study, average loss {loss:g}", xlabel="Mean burst length (packets)",
             extra_keys=("timeline_mean_burst",),
-            metrics=SUMMARY_METRICS + ("timeline_mean_burst", "timeline_loss_rate"))
+            metrics=SUMMARY_METRICS + ("timeline_mean_burst", "timeline_loss_rate"), high_from=0.0)
         notes = burst_notes(subset)
         with open(outputs[loss]["markdown"], "a", encoding="utf-8") as handle:
             handle.write("\n# Burst-specific findings\n\n" + "\n".join(f"- {n}" for n in notes) + "\n")

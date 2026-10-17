@@ -153,10 +153,15 @@ def main():
         names = sorted({r["method"] for r in combined})
         figures += plotting.plot_metric_curves(combined, names, os.path.join(args.out_dir, "fig_model_comparison"),
                                                title="Models compared (uniform RS vs best UEP)", legend_cols=1)
+        def describe(s):
+            if s["peak_gain_db"] is not None and s["peak_gain_db"] <= 0:
+                return "never beats uniform"
+            if s["worst_best_gain_db"] >= -0.05:
+                return "no low-loss penalty"
+            return f"break-even at loss {s['break_even_rate']:.2f}"
+
         notes = [f"{label}: worst best-method gain {s['worst_best_gain_db']:+.2f} dB, peak gain "
-                 f"{s['peak_gain_db']:+.2f} dB, break-even at loss "
-                 f"{'never' if s['break_even_rate'] is None else format(s['break_even_rate'], '.2f')}."
-                 for label, s in table_rows]
+                 f"{s['peak_gain_db']:+.2f} dB, {describe(s)}." for label, s in table_rows]
         if len(table_rows) > 1:
             base_penalty = table_rows[0][1]["worst_best_gain_db"]
             for label, s in table_rows[1:]:
@@ -178,7 +183,8 @@ def main():
         by = defaultdict(dict)
         for row in merged:
             by[row["method"]][row["erasure_rate"]] = row["psnr_db_mean_per_image__mean"]
-        jscc = next((a for m, a in aliases.items() if "@" in m), "uniform")
+        preferred = [aliases[chosen[src]] for src in ("oracle", "predicted", "attention") if src in chosen]
+        jscc = preferred[0] if preferred else "uniform"
         for codec in sorted(set(keep_digital)):
             clean_c, clean_j = by[codec].get(0.0), by[jscc].get(0.0)
             if clean_c is not None and clean_j is not None:

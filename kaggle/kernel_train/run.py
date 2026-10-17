@@ -62,9 +62,7 @@ def step(name: str, command: list, required: bool = True, timeout: float = None)
                                    timeout=timeout)
         except subprocess.TimeoutExpired:
             code = 124
-            log.write(f"
-KILLED after {timeout} s (timeout)
-")
+            log.write(f"\nKILLED after {timeout} s (timeout)\n")
     seconds = round(time.time() - started, 1)
     STATUS["steps"].append({"name": name, "command": command, "returncode": code, "seconds": seconds})
     say(f"END   {name}: exit {code} in {seconds}s")

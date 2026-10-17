@@ -118,6 +118,7 @@ def main():
     parser.add_argument("--inpaint_heads", type=int, default=4)
     parser.add_argument("--packet_size", type=int, default=16)
     parser.add_argument("--val_images", type=int, default=2000, help="validation images used each epoch")
+    parser.add_argument("--max_batches", type=int, default=None, help="limit batches per epoch (smoke tests only)")
     parser.add_argument("--oracle_max_images", type=int, default=None, help="default: all 40k training images")
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--wandb_project", default="rs-uep-jscc")
@@ -175,7 +176,9 @@ def main():
         if inpainter is not None:
             inpainter.train()
         total, batches = 0.0, 0
-        for x, _ in train_loader:
+        for batch_number, (x, _) in enumerate(train_loader):
+            if args.max_batches is not None and batch_number >= args.max_batches:
+                break
             x = x.to(device)
             with torch.set_grad_enabled(not frozen):
                 z_q = encoder(x, snr_db)
