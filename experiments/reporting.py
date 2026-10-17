@@ -156,12 +156,13 @@ def sweep_insights(summary: Sequence[dict], paired: Sequence[dict], x_key: str =
             ranked = sorted(score.items(), key=lambda item: -item[1])
             notes.append("Importance sources ranked by their best scheme's mean gain over "
                          f"{x_key} >= {high_loss_from:g}: " + ", ".join(f"{s} {g:+.2f} dB" for s, g in ranked) + ".")
-            reference = score.get("oracle") or score.get("oracle_perimage")
+            reference = score.get("oracle_perimage") or score.get("oracle")  # prefer the per-image ranking as the reference
             if reference and reference >= 0.25:  # a share of a negligible gain is meaningless
                 share = ", ".join(f"{s} {100 * g / reference:.0f}%" for s, g in ranked
-                                  if g != reference and "#" not in s and not s.startswith("oracle"))
+                                  if g != reference and "#" not in s and s != "oracle_perimage")
                 if share:
-                    notes.append(f"Share of the oracle gain captured: {share}.")
+                    notes.append(f"Share of the reference ranking's gain captured: {share}. A share above 100% means "
+                             "that source allocated protection better than the reference.")
             if "random" in score and "oracle" in score:
                 notes.append(f"Random-order control gains {score['random']:+.2f} dB versus oracle "
                              f"{score['oracle']:+.2f} dB, so the benefit comes from *which* channels are "
