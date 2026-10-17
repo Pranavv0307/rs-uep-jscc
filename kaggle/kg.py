@@ -18,11 +18,9 @@ from experiments.reproducibility import load_local_env  # noqa: E402
 
 def main() -> int:
     load_local_env()
-    local = REPO / ".venv" / ("Scripts" if os.name == "nt" else "bin") / ("kaggle.exe" if os.name == "nt" else "kaggle")
-    executable = str(local) if local.exists() else shutil.which("kaggle")
-    if not executable:
-        raise SystemExit("kaggle CLI not found; install it into .venv (see README)")
-    return subprocess.call([executable, *sys.argv[1:]])
+    # Call the CLI through the interpreter, so it works wherever the package is installed.
+    code = "import sys; from kaggle.cli import main; sys.argv[0] = 'kaggle'; main()"
+    return subprocess.call([sys.executable, "-c", code, *sys.argv[1:]])
 
 
 if __name__ == "__main__":

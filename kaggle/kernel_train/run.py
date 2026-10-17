@@ -22,7 +22,7 @@ BRANCH = "phase0-5-pipeline"
 JOB = "smoke"  # smoke | train_base | train_phase2 | train_kn
 
 WORK = "/kaggle/working"
-CODE = f"{WORK}/repo"
+CODE = "/tmp/repo"  # outside /kaggle/working, so the clone and the dataset are not saved as outputs
 OUT = f"{WORK}/outputs"
 PY = sys.executable
 STATUS = {"job": JOB, "branch": BRANCH, "steps": [], "started": time.strftime("%Y-%m-%dT%H:%M:%S")}
@@ -33,13 +33,19 @@ def say(message: str) -> None:
 
 
 def sync() -> None:
-    """Copy results, logs and offline W&B runs to the folder Kaggle keeps."""
-    for source, target in ((f"{CODE}/results", f"{OUT}/results"), (f"{CODE}/wandb", f"{OUT}/wandb")):
+    """Copy results to the folder Kaggle keeps and refresh status.json. Never raises."""
+    try:
+        source = f"{CODE}/results"
         if os.path.isdir(source):
-            shutil.copytree(source, target, dirs_exist_ok=True)
+            shutil.copytree(source, f"{OUT}/results", dirs_exist_ok=True, symlinks=True)
+    except Exception as error:  # noqa: BLE001 - a copy problem must not kill a multi-hour job
+        say(f"WARNING: could not copy results: {error!r}")
     STATUS["updated"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-    with open(f"{OUT}/status.json", "w", encoding="utf-8") as handle:
-        json.dump(STATUS, handle, indent=2)
+    try:
+        with open(f"{OUT}/status.json", "w", encoding="utf-8") as handle:
+            json.dump(STATUS, handle, indent=2)
+    except Exception as error:  # noqa: BLE001
+        say(f"WARNING: could not write status.json: {error!r}")
 
 
 def step(name: str, command: list, required: bool = True) -> bool:
@@ -47,7 +53,7 @@ def step(name: str, command: list, required: bool = True) -> bool:
     say(f"START {name}: {' '.join(command)}")
     started = time.time()
     environment = {**os.environ, "WANDB_MODE": "offline", "WANDB_SILENT": "true", "PYTHONUNBUFFERED": "1",
-                   "PYTHONUTF8": "1"}
+                   "PYTHONUTF8": "1", "WANDB_DIR": f"{OUT}/wandb"}
     with open(f"{OUT}/logs/{name}.log", "w", encoding="utf-8") as log:
         code = subprocess.call(command, cwd=CODE, stdout=log, stderr=subprocess.STDOUT, env=environment)
     seconds = round(time.time() - started, 1)
@@ -70,7 +76,7 @@ def train(seed: int, folder: str, extra: tuple = ()) -> None:
 
 
 def main() -> None:
-    os.makedirs(OUT, exist_ok=True)
+    os.makedirs(f"{OUT}/wandb", exist_ok=True)
     say(f"job={JOB} python={platform.python_version()} platform={platform.platform()}")
     if os.path.isdir(CODE):
         shutil.rmtree(CODE)
