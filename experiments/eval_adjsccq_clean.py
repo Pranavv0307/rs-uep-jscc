@@ -22,6 +22,7 @@ import torch
 
 from data.cifar10 import get_cifar10_loaders
 from experiments.metrics import psnr_per_image, ssim
+from experiments.reproducibility import build_provenance, seed_everything
 from models.adjsccq import NOMINAL_SNR_DB_IDENTITY, ADJSCCQDecoder, ADJSCCQEncoder
 
 DEFAULT_CHECKPOINT = "results/checkpoints/adjsccq_identity_train/adjsccq_identity_final.pth"
@@ -101,9 +102,11 @@ def main():
     parser.add_argument("--data_dir", default="./cifar10_data")
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--max_images", type=int, default=None, help="default: full 10,000-image test set")
+    parser.add_argument("--global_seed", type=int, default=42)
     parser.add_argument("--output", default="results/eval/adjsccq_clean.json")
     args = parser.parse_args()
 
+    seed_everything(args.global_seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     encoder, decoder, cfg = load_adjsccq_checkpoint(args.checkpoint, device)
     snr_db = cfg.get("af_conditioning", {}).get("nominal_snr_db", NOMINAL_SNR_DB_IDENTITY)
@@ -111,6 +114,13 @@ def main():
 
     results = evaluate_clean(encoder, decoder, test_loader, snr_db, device, args.max_images)
     results.update({"checkpoint": args.checkpoint, "device": str(device), "torch": torch.__version__})
+    results["metadata"] = build_provenance(
+        args=args,
+        checkpoint_path=args.checkpoint,
+        split_info={"evaluated_on": "official CIFAR-10 test split"},
+        global_seed=args.global_seed,
+        device=device,
+    )
 
     for key, value in results.items():
         print(f"{key:28s} {value}")

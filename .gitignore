@@ -41,3 +41,12 @@ week1_execution_plan.md
 amritape/
 images/
 scratch_eval.py
+
+# credentials and local tooling: never commit
+.kaggle/
+.env
+*.env
+.vendor/
+kaggle.json
+.netrc
+.pytest_cache/

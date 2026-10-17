@@ -126,11 +126,15 @@ class ADJSCCDecoder(nn.Module):
         self.af5 = AFModule(3)
         self.out_act = nn.Sigmoid()
 
-    def forward(self, z_hat_flat: torch.Tensor, snr_db, return_attn: bool = False):
+    def forward(self, z_hat_flat: torch.Tensor, snr_db, return_attn: bool = False, spatial_hw=None):
+        """``spatial_hw`` = (H', W') of the latent grid. Defaults to the square grid the
+        decoder was built for; pass it explicitly to decode other image sizes
+        (every layer is convolutional, so the network works at any resolution)."""
         attn = {} if return_attn else None
         B = z_hat_flat.shape[0]
-        c = z_hat_flat.shape[1] // (self.spatial * self.spatial)
-        x = z_hat_flat.view(B, c, self.spatial, self.spatial)
+        height, width = spatial_hw if spatial_hw is not None else (self.spatial, self.spatial)
+        c = z_hat_flat.shape[1] // (height * width)
+        x = z_hat_flat.view(B, c, height, width)
 
         x, g = self.af1(self.deconv1(x), snr_db)
         if return_attn:
