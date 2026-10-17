@@ -75,6 +75,30 @@ def step(name: str, command: list, required: bool = True, timeout: float = None)
     return code == 0
 
 
+def prepare_cifar10() -> None:
+    """Use the CIFAR-10 copy attached as a Kaggle input (the Toronto server is far too slow), then verify it.
+
+    torchvision's integrity check compares every batch file against the official md5 checksums, so a
+    modified copy is rejected. Falls back to a bounded download if no attached copy is found.
+    """
+    import glob
+
+    hits = glob.glob("/kaggle/input/**/data_batch_1", recursive=True)
+    destination = f"{CODE}/data/cifar-10-batches-py"
+    if hits:
+        os.makedirs(f"{CODE}/data", exist_ok=True)
+        if not os.path.exists(destination):
+            shutil.copytree(os.path.dirname(hits[0]), destination)
+        say(f"CIFAR-10 taken from the attached input {os.path.dirname(hits[0])}")
+    else:
+        step("download_cifar10", [PY, "-m", "experiments.download_data", "--cifar10", "--data_dir", "./data"],
+             timeout=1200)
+    step("verify_cifar10", [PY, "-c",
+                            "from torchvision import datasets as d;a=d.CIFAR10('./data',train=True,download=False);"
+                            "b=d.CIFAR10('./data',train=False,download=False);print('md5 verified',len(a),len(b))"],
+         timeout=600)
+
+
 def train(seed: int, folder: str, extra: tuple = ()) -> None:
     step(f"train_{folder.replace('/', '_')}", [
         PY, "-m", "experiments.train_adjsccq_train_split", "--seed", str(seed), "--split_seed", "42",
@@ -96,7 +120,7 @@ def main() -> None:
                          "'cuda',torch.cuda.is_available(),torch.cuda.get_device_name(0) if torch.cuda.is_available() else '');"
                          "print('cpus',__import__('os').cpu_count())"], required=False)
     subprocess.call(["bash", "-c", f"nvidia-smi > {OUT}/nvidia-smi.txt 2>&1"])
-    step("download_cifar10", [PY, "-m", "experiments.download_data", "--cifar10", "--data_dir", "./data"])
+    prepare_cifar10()
 
     if JOB == "tests":
         step("pytest", [PY, "-m", "pytest", "tests", "-q", "-p", "no:cacheprovider", "--tb=short", "-x"],
