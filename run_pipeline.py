@@ -59,11 +59,15 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
     seeds = "0,1,2,3,4"
     rates = "0.0,0.1,0.2,0.3,0.35,0.4,0.45,0.5"
 
+    # Tier-allocation SELECTION only needs the relative order of schemes, which the paired design measures with
+    # low variance, so validation sweeps use 3 seeds x 5,000 images. Final test tables use 5 seeds x all 10,000.
+    SELECTION = dict(seeds_arg="0,1,2", extra=("--max_images", 5000))
+
     def sweep(name, phase, description, ckpt, split, importance, out_dir, label, rank=None, head=None,
-              schemes="all", rates_arg=rates, extra=(), produces=None):
+              schemes="all", rates_arg=rates, extra=(), produces=None, seeds_arg=None):
         command = mod("eval_rs_uep", "--checkpoint", ckpt, "--data_dir", data, "--split", split,
                       "--importance", importance, "--schemes", schemes, "--erasure_rates", rates_arg,
-                      "--seeds", seeds, "--output_dir", out_dir, "--name", label, *extra)
+                      "--seeds", seeds_arg or seeds, "--output_dir", out_dir, "--name", label, *extra)
         if rank:
             command += ["--oracle_ranking_file", rank]
         if head:
@@ -123,7 +127,7 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
         sweep("val_sweep_base", "phase1", "Validation sweep, ALL schemes, for choosing the tier allocation",
               best(base42), "val", "attention,oracle,predicted", f"{r}/phase1/val_sweep", "val_sweep",
               rank=ranking(base42), head=f"{r}/phase1/head/sensitivity_head.pt",
-              extra=("--include_random_control", "--include_no_rs")),
+              seeds_arg="0,1,2", extra=("--include_random_control", "--include_no_rs", "--max_images", 5000)),
         Step("select_base", "phase1", "Select the tier allocation on the validation sweep",
              mod("select_scheme", "--sweep", f"{r}/phase1/val_sweep/val_sweep.json", "--output",
                  f"{r}/phase1/val_sweep/selected_schemes.json"),
@@ -145,7 +149,8 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
                           [f"{folder}/adjsccq_erasure_robust.pth", ranking(folder)], True))
         steps.append(sweep(f"val_{key}", "phase2", f"Validation sweep of {key} (its own oracle ranking)",
                            f"{folder}/adjsccq_erasure_robust.pth", "val", "oracle", f"{folder}/val_sweep", "val_sweep",
-                           rank=ranking(folder), extra=("--include_no_rs",)))
+                           rank=ranking(folder), seeds_arg="0,1,2",
+                           extra=("--include_no_rs", "--max_images", 5000)))
         steps.append(Step(f"select_{key}", "phase2", f"Select the tier allocation for {key} on its validation sweep",
                           mod("select_scheme", "--sweep", f"{folder}/val_sweep/val_sweep.json", "--output",
                               f"{folder}/val_sweep/selected_schemes.json"),
@@ -181,7 +186,7 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
                           [best(folder), ranking(folder)], True))
         steps.append(sweep(f"val_kn_{tag}", "phase3", f"Validation sweep at k/n = {ratio:.4f}", best(folder), "val",
                            "oracle", f"{folder}/val_sweep", "val_sweep", rank=ranking(folder),
-                           extra=("--include_no_rs",)))
+                           seeds_arg="0,1,2", extra=("--include_no_rs", "--max_images", 5000)))
         steps.append(Step(f"select_kn_{tag}", "phase3", f"Select the tier allocation at k/n = {ratio:.4f}",
                           mod("select_scheme", "--sweep", f"{folder}/val_sweep/val_sweep.json", "--output",
                               f"{folder}/val_sweep/selected_schemes.json"),
@@ -282,6 +287,8 @@ def main():
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--execute", action="store_true", help="actually run (default: print only)")
     parser.add_argument("--skip_existing", action="store_true")
+    parser.add_argument("--continue_on_error", action="store_true",
+                        help="log a failed step and carry on with the next one (unattended runs)")
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--wandb_project", default="rs-uep-jscc")
     parser.add_argument("--workers", type=int, default=1, help="CPU workers for the evaluation sweeps")
@@ -338,6 +345,9 @@ def main():
             handle.write(json.dumps(record) + "\n")
         print(f"  -> exit {process.returncode} in {record['seconds']} s (log: {log_path})")
         if process.returncode != 0:
+            if cfg.continue_on_error:
+                print(f"  !! step {step.name} FAILED (exit {process.returncode}); continuing. Log: {log_path}")
+                continue
             raise SystemExit(f"step {step.name} failed; see {log_path}")
 
 
