@@ -197,3 +197,63 @@ oracle recomputed for the fine-tuned model, before/after figures.
 3. Work through RUNBOOK sections 4-8; append a results entry here after each phase (numbers, figures, decisions).
 
 ---
+
+## Execution log (2026-10-17 / 18): first end-to-end run
+
+This section records what actually happened when the code was run, in order, including every problem and
+decision. Times are the machine's clock (IST).
+
+### Verification
+* `pytest tests`: 179 passed on the first run (later 180); the same suite passes on Kaggle (Python 3.13, torch 2.11).
+* Every script was smoke-tested on tiny inputs before any long run (attention, saliency, head, burst, digital,
+  robust training with and without the inpainter, multiseed, selection, report, transfer, Kodak).
+* Preflight (`python -m experiments.preflight --wandb_test --kaggle_test`): W&B logged a test run, Kaggle authenticated,
+  CIFAR-10 md5-verified.
+
+### Problems found and fixed while running
+| Problem | Cause | Fix |
+|---|---|---|
+| `test_cifar10` hung | default data folder did not exist, so it re-downloaded 170 MB at ~50 kB/s | test now uses the verified `./data` |
+| Kaggle kernel ran 35+ min then errored | repo's own tracked `wandb/` folder (with a symlink) crashed my copy step; CIFAR-10 download from Toronto is slow | run in `/tmp`, never raise on copy errors, use the CIFAR-10 copy hosted on Kaggle (md5-verified by torchvision) |
+| two kernels failed instantly | my patch split an f-string across lines | compile-check every launcher in the test suite |
+| Windows console crashed on `Δ` / `±` | cp1252 stdout | UTF-8 reconfigure in `experiments/__init__.py`; explicit UTF-8 for every text file |
+| training logged to the wrong W&B account | script called wandb without loading `.env`; another account was logged in on the machine | `.env` is loaded on package import |
+| Kodak/digital insight texts misleading ("break-even at 0.00", "1064% of oracle gain") | edge cases of the generated text | guarded; reference ranking is now the per-image one |
+| a methodology gap | the best ranking source (energy) was not in the validation sweep, so its tier allocation would have been chosen on test numbers | added a validation sweep + selection for energy/L1; reports take allocations only from validation selection files |
+| selection sweeps too slow | single-threaded workers: ~28 min per cell | selection sweeps use 3 seeds x 5,000 validation images; final tables keep 5 seeds x all 10,000 |
+| Kaggle GPU queue | a GPU job waited ~2 h; sessions are capped at 2 | per-step timeouts; CPU kernels (no queue, ~7.5 h per model) and GPU kernels run in parallel |
+
+### Training instability of the original recipe (recipe v1) and the change to recipe v2
+Recipe v1 = Adam, constant lr 1e-3, no gradient clipping, quantiser sigma annealed 1.0 -> 0.05 over 50 epochs (the project's
+original recipe). Runs under v1 (figure `training_stability_v1`, data from the training logs):
+
+| run | best val PSNR | last-epoch val PSNR | largest one-epoch drop |
+|---|---|---|---|
+| CPU seed 42 | 30.52 dB | 21.05 dB | 8.5 dB |
+| GPU seed 42 | 30.84 dB | 30.84 dB | 4.0 dB |
+| GPU seed 100 | 31.30 dB | 31.30 dB | 3.3 dB |
+| GPU seed 2024 | 26.49 dB (epoch 21) | 24.12 dB | 3.6 dB |
+| GPU k/n = 1/3 | 26.70 dB | 12.48 dB | 13.6 dB |
+
+Best-epoch selection on validation protects the saved model in stable runs, but two models (GPU seed 2024 and k/n = 1/3)
+never converged, so their damage profiles (worst channel only 4.6 dB for seed 2024) are not comparable. Rather than drop
+those runs silently, the recipe was changed for **all** models: **recipe v2 = cosine learning-rate decay (1e-3 -> 1e-5) and
+gradient-norm clipping at 1.0**, everything else identical. All models are retrained from scratch with v2 on Kaggle T4 GPUs
+(`v2_a`: seeds 42, 2024 + the three erasure-robust fine-tunes; `v2_b`: seed 100 + the three k/n models). The v1 runs are
+kept as a documented pilot. The recipe change was motivated by training divergence observed on validation data only; no test
+number influenced it.
+
+### Pilot results (v1, CPU-trained seed 42; validation split unless stated)
+* Clean test PSNR 30.57 dB (SSIM 0.9594). Worst channel costs 11.9 dB when lost; next 5.4 dB; least 1.7 dB.
+* Attention vs true damage (2,000 val images): within-image Spearman +0.18 (95% CI 0.17-0.19), top-4 overlap 0.33 (chance 0.25):
+  weakly informative, not zero.
+* A.1 transfer to CIFAR-100: Spearman +0.988, Pearson +0.999, top-4 overlap 0.75 -> a static table transfers.
+* A.2 proxies (within-image Spearman): energy +0.82, L1 +0.81, static table +0.75, Taylor +0.46, variance +0.35, attention +0.18.
+* A.3 head: top-4 overlap 0.88 vs 0.75 (static) vs 0.25 (random); protection regret 0.27 dB vs 1.68 dB vs 13.0 dB; 0.039% of encoder MACs.
+* Erasure sweep at 40% loss (10,000 val images, 5 seeds; gain over uniform RS, paired, 95% CI +-0.02-0.06 dB):
+  energy +1.94, L1 +1.90, true per-image leave-one-out +1.83, trained head +1.71, Taylor +1.53, variance +1.22, static
+  oracle +1.20, attention +0.95, random order +0.86. Uniform RS is better by 1.5-3 dB at 30% loss (break-even ~34%).
+* Scheme selection (validation): `three_tier_25_50_25` is best from 35% loss up for every ranking source; `two_tier_50_50`
+  wins at 10-30%; selected union = {three_tier_25_25_50, three_tier_25_50_25, two_tier_25_75, two_tier_50_50}.
+
+These pilot numbers are not final: they come from a v1 model. They are repeated on the v2 family below.
