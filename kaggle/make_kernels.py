@@ -15,8 +15,11 @@ OWNER = "vaishakprasadbhat"
 GPU_JOBS = {"timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all"}
 
 
-def make(job: str) -> Path:
-    slug = "rs-uep-jscc-" + job.replace("_", "-")
+def make(spec: str) -> Path:
+    """``spec`` is a job name, optionally ``job:cpu`` to force a CPU session (no GPU queue)."""
+    job, _, hardware = spec.partition(":")
+    force_cpu = hardware == "cpu"
+    slug = "rs-uep-jscc-" + job.replace("_", "-") + ("-cpu" if force_cpu else "")
     folder = HERE / "kernels" / slug
     folder.mkdir(parents=True, exist_ok=True)
     code = (HERE / "kernel_train" / "run.py").read_text(encoding="utf-8")
@@ -24,7 +27,7 @@ def make(job: str) -> Path:
     (folder / "run.py").write_text(code, encoding="utf-8")
     metadata = {
         "id": f"{OWNER}/{slug}", "title": slug, "code_file": "run.py", "language": "python",
-        "kernel_type": "script", "is_private": "true", "enable_gpu": "true" if job in GPU_JOBS else "false",
+        "kernel_type": "script", "is_private": "true", "enable_gpu": "true" if (job in GPU_JOBS and not force_cpu) else "false",
         "enable_tpu": "false", "enable_internet": "true", "dataset_sources": ["pankrzysiu/cifar10-python"], "competition_sources": [],
         "kernel_sources": [], "model_sources": [],
     }

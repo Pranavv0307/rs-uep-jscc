@@ -25,6 +25,8 @@ WORK = "/kaggle/working"
 CODE = "/tmp/repo"  # outside /kaggle/working, so the clone and the dataset are not saved as outputs
 OUT = f"{WORK}/outputs"
 PY = sys.executable
+GPU = shutil.which("nvidia-smi") is not None
+TRAIN_TIMEOUT = 14400 if GPU else 40000  # seconds per model; a CPU session needs far longer than a GPU one
 STATUS = {"job": JOB, "branch": BRANCH, "steps": [], "started": time.strftime("%Y-%m-%dT%H:%M:%S")}
 
 
@@ -100,7 +102,7 @@ def prepare_cifar10() -> None:
 
 
 def train(seed: int, folder: str, extra: tuple = ()) -> None:
-    step(f"train_{folder.replace('/', '_')}", timeout=14400, command=[
+    step(f"train_{folder.replace('/', '_')}", timeout=TRAIN_TIMEOUT, command=[
         PY, "-m", "experiments.train_adjsccq_train_split", "--seed", str(seed), "--split_seed", "42",
         "--skip_rs_sweep", "--data_dir", "./data", "--output_dir", f"results/{folder}",
         "--wandb", "--wandb_project", "rs-uep-jscc", "--wandb_name", f"kaggle-{folder.replace('/', '-')}", *extra])
@@ -152,7 +154,15 @@ def main() -> None:
     if JOB in ("train_kn", "train_all"):
         for ratio, tag in ((0.0625, "1_16"), (0.083333333, "1_12"), (0.333333333, "1_3")):
             train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
-    if JOB not in ("tests", "timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all"):
+    if JOB.startswith("train_seed"):
+        seed = int(JOB[len("train_seed"):])
+        train(seed, f"models/seed{seed}")
+    if JOB.startswith("train_kn_"):
+        tag = JOB[len("train_kn_"):]
+        ratio = {"1_16": 0.0625, "1_12": 0.083333333, "1_3": 0.333333333}[tag]
+        train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
+    if not (JOB in ("tests", "timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all")
+            or JOB.startswith(("train_seed", "train_kn_"))):
         raise SystemExit(f"unknown job {JOB}")
     STATUS["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     sync()
