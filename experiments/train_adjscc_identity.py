@@ -65,7 +65,7 @@ def evaluate(encoder, decoder, test_loader, criterion, nominal_snr_db, device):
 
 
 def main(config_path: str, data_dir: str):
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
     seed_everything(cfg.get("seed", 42))

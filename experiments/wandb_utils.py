@@ -14,6 +14,9 @@ def init_run(enabled: bool, project: str, name: Optional[str], config: Optional[
     """Return a wandb run, or ``None`` when logging is disabled / unavailable."""
     if not enabled:
         return None
+    from experiments.reproducibility import load_local_env
+
+    load_local_env()  # picks up WANDB_API_KEY from the git-ignored .env, if any
     try:
         import wandb
         return wandb.init(project=project, name=name, config=config, tags=tags, group=group, job_type=job_type,

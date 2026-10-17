@@ -125,7 +125,7 @@ def main():
     for key, value in results.items():
         print(f"{key:28s} {value}")
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    with open(args.output, "w") as handle:
+    with open(args.output, "w", encoding="utf-8") as handle:
         json.dump(results, handle, indent=2)
     print(f"saved -> {args.output}")
 

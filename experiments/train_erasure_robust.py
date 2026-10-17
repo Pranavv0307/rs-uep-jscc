@@ -282,7 +282,7 @@ def main():
     figures += plotting.plot_bars(np.sort(mean_damage)[::-1], [str(c) for c in np.argsort(-mean_damage)],
                                   os.path.join(args.output_dir, "oracle_damage"), ylabel="Mean PSNR drop (dB)",
                                   title="Per-channel damage after fine-tuning", highlight=[0])
-    with open(os.path.join(args.output_dir, "metrics.md"), "w") as handle:
+    with open(os.path.join(args.output_dir, "metrics.md"), "w", encoding="utf-8") as handle:
         handle.write("# Erasure-robust fine-tuning\n\n" + "\n".join(f"- {n}" for n in notes) + "\n")
     print("\n".join(f"- {n}" for n in notes))
     wandb_utils.log_images(run, "figures", figures)

@@ -258,7 +258,7 @@ def resolve(command: List[str], dry_run: bool) -> List[str]:
         if token.startswith("{selected:") and token.endswith("}"):
             path = token[len("{selected:"):-1]
             if os.path.exists(path):
-                with open(path) as handle:
+                with open(path, encoding="utf-8") as handle:
                     token = json.load(handle)["schemes_arg"]
             elif dry_run:
                 token = f"<schemes chosen on validation: read from {path}>"
@@ -329,12 +329,12 @@ def main():
             continue
         started = time.time()
         log_path = f"{cfg.results}/logs/{step.name}.log"
-        with open(log_path, "w") as log:
+        with open(log_path, "w", encoding="utf-8") as log:
             process = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
         record = {"step": step.name, "phase": step.phase, "command": command, "returncode": process.returncode,
                   "seconds": round(time.time() - started, 1), "git_commit": git_commit(), "log": log_path,
                   "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
-        with open(f"{cfg.results}/logs/pipeline_manifest.jsonl", "a") as handle:
+        with open(f"{cfg.results}/logs/pipeline_manifest.jsonl", "a", encoding="utf-8") as handle:
             handle.write(json.dumps(record) + "\n")
         print(f"  -> exit {process.returncode} in {record['seconds']} s (log: {log_path})")
         if process.returncode != 0:

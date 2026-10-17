@@ -191,7 +191,7 @@ def main():
                 best = max(paired, key=lambda p: p["mean"] if metric == "ms_ssim_mean" else -p["mean"])
                 notes.append(f"{metric} at loss 0.4: best {best['method']} {best['mean']:+.4f} vs uniform "
                              f"(roadmap target: ΔMS-SSIM ≥ +0.04).")
-    with open(outputs["markdown"], "a") as handle:
+    with open(outputs["markdown"], "a", encoding="utf-8") as handle:
         handle.write("\n# Perceptual metrics\n\n" + "\n".join(f"- {n}" for n in notes) + "\n")
     print("\n".join(f"- {line}" for line in outputs["insights"] + notes))
     wandb_utils.log_table(run, "seed_summary", outputs["summary"])

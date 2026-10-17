@@ -341,7 +341,7 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
     ``experiments/eval_rs_uep.py``, which parallelises it and supports every
     importance source.
     """
-    with open(config_path) as handle:
+    with open(config_path, encoding="utf-8") as handle:
         cfg = yaml.safe_load(handle)
     if seed_override is not None:
         cfg["seed"] = seed_override
@@ -485,7 +485,7 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         encoder, decoder, train_loader, nominal_snr_db, device, oracle_max_images
     )
     oracle_path = os.path.join(output_dir, "oracle_ranking.json")
-    with open(oracle_path, "w") as handle:
+    with open(oracle_path, "w", encoding="utf-8") as handle:
         json.dump({
             "checkpoint": best_path,
             "source_split": "train",
@@ -549,7 +549,7 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         "rs_uep_validation": rs_validation_rows,
         "rs_uep_test": rs_rows,
     }
-    with open(os.path.join(output_dir, "metrics.json"), "w") as handle:
+    with open(os.path.join(output_dir, "metrics.json"), "w", encoding="utf-8") as handle:
         json.dump(metrics, handle, indent=2)
 
     if wandb is not None:

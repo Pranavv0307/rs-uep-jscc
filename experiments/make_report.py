@@ -129,7 +129,7 @@ def main():
     figures += plotting.plot_paired_gain(gain_rows, [a for m, a in aliases.items() if m != "uniform"],
                                          os.path.join(args.out_dir, "fig3_gain"),
                                          title="Gain over uniform RS (paired, 95% CI)")
-    with open(os.path.join(args.out_dir, "headline.md"), "w") as handle:
+    with open(os.path.join(args.out_dir, "headline.md"), "w", encoding="utf-8") as handle:
         handle.write(headline_markdown(summary, paired, {s: chosen[s] for s in PRIMARY_SOURCES if s in chosen}))
 
     sections = [("Main erasure sweep", main_result.get("insights", sweep_insights(summary, paired)))]
@@ -229,7 +229,7 @@ def main():
         if data.get("insights"):
             sections.append((label, data["insights"]))
 
-    with open(os.path.join(args.out_dir, "INSIGHTS.md"), "w") as handle:
+    with open(os.path.join(args.out_dir, "INSIGHTS.md"), "w", encoding="utf-8") as handle:
         handle.write("# Insights (generated from the result files, not hand-written)\n\n")
         for title, lines in sections:
             handle.write(f"## {title}\n\n" + "\n".join(f"- {line}" for line in lines) + "\n\n")

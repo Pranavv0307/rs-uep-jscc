@@ -249,12 +249,41 @@ def log_test_access(script: str, checkpoint: Optional[str] = None, note: str = "
         "note": note,
     }
     os.makedirs(os.path.dirname(log_path) or ".", exist_ok=True)
-    with open(log_path, "a") as handle:
+    with open(log_path, "a", encoding="utf-8") as handle:
         handle.write(json.dumps(record) + "\n")
 
 
 def write_json(path: str, payload: Any) -> None:
     """Create parent folders and write ``payload`` as indented JSON."""
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    with open(path, "w") as handle:
+    with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, default=str)
+
+
+# --------------------------------------------------------------------------
+# Repo-local credentials (never leave the project folder, never committed)
+# --------------------------------------------------------------------------
+def load_local_env(path: Optional[str] = None) -> List[str]:
+    """Load ``KEY=VALUE`` lines from the git-ignored ``<repo>/.env`` into ``os.environ``.
+
+    Existing environment variables win. If ``<repo>/.kaggle`` exists the Kaggle CLI is pointed
+    at it (``KAGGLE_CONFIG_DIR``) so no credentials are read from outside the project.
+    Returns the names (never the values) of the variables that were set.
+    """
+    loaded: List[str] = []
+    env_path = Path(path) if path else REPO_ROOT / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key, value = key.strip(), value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+                loaded.append(key)
+    kaggle_dir = REPO_ROOT / ".kaggle"
+    if kaggle_dir.is_dir() and "KAGGLE_CONFIG_DIR" not in os.environ:
+        os.environ["KAGGLE_CONFIG_DIR"] = str(kaggle_dir)
+        loaded.append("KAGGLE_CONFIG_DIR")
+    return loaded

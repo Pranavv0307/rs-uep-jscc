@@ -96,7 +96,7 @@ def main():
 
     reference_images = load_image_tensor("cifar10", "val", args.data_dir, args.max_images, bundle.split_seed)
     reference = damage_for_tensor(bundle, reference_images, args.batch_size, progress)["damage"]
-    with open(args.reference_ranking) as handle:
+    with open(args.reference_ranking, encoding="utf-8") as handle:
         train_ranking = json.load(handle)["ranking_channels_most_to_least_important"]
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -148,7 +148,7 @@ def main():
         axis.legend()
         figures += plotting.save_figure(fig, os.path.join(args.output_dir, f"bars_cifar10_vs_{target}"))
 
-    with open(os.path.join(args.output_dir, "transfer.md"), "w") as handle:
+    with open(os.path.join(args.output_dir, "transfer.md"), "w", encoding="utf-8") as handle:
         handle.write("# Cross-dataset invariance of channel sensitivity (frozen model)\n\n"
                      "| target | Spearman (95% CI) | Pearson | Kendall | top-4 overlap | decision |\n|---|---|---|---|---|---|\n")
         for target, s in results.items():

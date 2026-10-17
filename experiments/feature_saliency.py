@@ -62,7 +62,7 @@ def main():
     if is_official_test("cifar10", args.split):
         log_test_access("experiments.feature_saliency", args.checkpoint)
     images = load_image_tensor("cifar10", args.split, args.data_dir, args.max_images, bundle.split_seed)
-    with open(args.reference_ranking) as handle:
+    with open(args.reference_ranking, encoding="utf-8") as handle:
         static = json.load(handle)["ranking_channels_most_to_least_important"]
     static_scores = np.zeros(bundle.channels)
     static_scores[static] = np.arange(bundle.channels, 0, -1)
@@ -127,7 +127,7 @@ def main():
                                   os.path.join(args.output_dir, "top4_overlap"),
                                   ylabel="Top-4 overlap with true top-4", highlight=[labels.index("random")],
                                   figsize=(6.0, 3.2))
-    with open(os.path.join(args.output_dir, "saliency.md"), "w") as handle:
+    with open(os.path.join(args.output_dir, "saliency.md"), "w", encoding="utf-8") as handle:
         handle.write("# Feature-saliency proxies vs true leave-one-out damage\n\n"
                      "| proxy | within-image Spearman (95% CI) | top-1 hit | top-4 overlap | verdict |\n|---|---|---|---|---|\n")
         for k in labels:

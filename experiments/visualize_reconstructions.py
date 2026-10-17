@@ -162,7 +162,7 @@ def run_visual_comparison(args):
         extra={"oracle_ranking": ranking, "erasure_rate": args.erasure_rate, "uep_scheme": args.uep_scheme},
     )
     sidecar = os.path.splitext(args.output)[0] + ".provenance.json"
-    with open(sidecar, "w") as handle:
+    with open(sidecar, "w", encoding="utf-8") as handle:
         json.dump(metadata, handle, indent=2)
     print(f"Provenance saved to: {sidecar}")
 

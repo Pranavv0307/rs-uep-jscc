@@ -52,7 +52,7 @@ def evaluate(encoder, decoder, channel, test_loader, criterion, eval_snrs, devic
 
 
 def main(config_path: str, data_dir: str):
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
     seed_everything(cfg["seed"])

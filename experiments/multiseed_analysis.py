@@ -44,12 +44,12 @@ BANDS = (("catastrophic (>10 dB)", 10.0, np.inf), ("high (5-10 dB)", 5.0, 10.0),
 
 def load_run(spec: str):
     name, _, folder = spec.partition("=")
-    with open(os.path.join(folder, "oracle_ranking.json")) as handle:
+    with open(os.path.join(folder, "oracle_ranking.json"), encoding="utf-8") as handle:
         oracle = json.load(handle)
     metrics_path = os.path.join(folder, "metrics.json")
     clean = None
     if os.path.exists(metrics_path):
-        with open(metrics_path) as handle:
+        with open(metrics_path, encoding="utf-8") as handle:
             clean = json.load(handle).get("clean_validation", {}).get("psnr_db_mean_per_image")
     return name, folder, oracle, clean
 
@@ -174,7 +174,7 @@ def main():
                                          os.path.join(args.output_dir, "profile_pearson"),
                                          title="Sorted-profile Pearson", cbar_label="r", fmt="{:.3f}")
 
-    with open(os.path.join(args.output_dir, "multiseed.md"), "w") as handle:
+    with open(os.path.join(args.output_dir, "multiseed.md"), "w", encoding="utf-8") as handle:
         handle.write("# Multi-seed oracle comparison\n\n| model | clean val PSNR | top-4 channels | worst (dB) | least (dB) | top-4 share | bands |\n"
                      "|---|---|---|---|---|---|---|\n")
         for m in result["per_model"]:

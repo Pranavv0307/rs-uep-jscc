@@ -211,7 +211,7 @@ def main():
         print("labels written; run again with --stage train")
         return
 
-    with open(args.reference_ranking) as handle:
+    with open(args.reference_ranking, encoding="utf-8") as handle:
         static_ranking = json.load(handle)["ranking_channels_most_to_least_important"]
     channels = bundle.channels
     train_x, val_x = build_features(train_labels, args.use_variance), build_features(val_labels, args.use_variance)
@@ -324,7 +324,7 @@ def main():
                                      os.path.join(args.output_dir, "top4_selection_frequency"),
                                      title="How often each channel is in the top-4", cbar_label="fraction of images",
                                      fmt="{:.2f}")
-    with open(os.path.join(args.output_dir, "head_metrics.md"), "w") as handle:
+    with open(os.path.join(args.output_dir, "head_metrics.md"), "w", encoding="utf-8") as handle:
         handle.write("# Sensitivity head (validation split)\n\n| ranking | top-4 overlap | top-1 hit | within-image Spearman | regret (dB) |\n|---|---|---|---|---|\n")
         for name, m in comparison.items():
             handle.write(f"| {name} | {m['top4_overlap']:.3f} | {m['top1_hit_rate']:.3f} | "

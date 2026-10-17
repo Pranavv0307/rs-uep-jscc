@@ -117,9 +117,13 @@ def sweep_insights(summary: Sequence[dict], paired: Sequence[dict], x_key: str =
     for rate in rates:
         candidates = [(m, rows[rate]["mean"]) for m, rows in by_method.items() if rate in rows]
         best_per_rate[rate] = max(candidates, key=lambda c: c[1])
-    crossing = crossover(rates, [best_per_rate[r][1] for r in rates])
-    if crossing is None:
+    best_gains = [best_per_rate[r][1] for r in rates]
+    crossing = crossover(rates, best_gains)
+    if max(best_gains) <= 0:
         notes.append(f"No method ever beats `{baseline}` on average in this sweep.")
+    elif min(best_gains) >= -0.05:
+        notes.append(f"No low-loss penalty: the best method is never more than 0.05 dB below `{baseline}` "
+                     f"at any {x_key} in this sweep.")
     else:
         notes.append(f"Break-even: the best protected method overtakes `{baseline}` from about "
                      f"{x_key} = {crossing:.2f}.")
@@ -286,7 +290,7 @@ def write_sweep_outputs(out_dir: str, name: str, rows: List[dict], metadata: dic
     write_json(json_path, {"metadata": metadata, "seed_summary": summary, "paired_vs_baseline": paired,
                            "insights": insights, "rows": rows})
     md_path = os.path.join(out_dir, f"{name}.md")
-    with open(md_path, "w") as handle:
+    with open(md_path, "w", encoding="utf-8") as handle:
         handle.write(summary_markdown(summary, metadata, x_key, title, extra_keys))
         handle.write("\n" + paired_markdown(paired, x_key, baseline))
         handle.write("\n# Insights\n\n" + "\n".join(f"- {line}" for line in insights) + "\n")
@@ -306,7 +310,7 @@ def write_sweep_outputs(out_dir: str, name: str, rows: List[dict], metadata: dic
 def load_result(path: str) -> dict:
     import json
 
-    with open(path) as handle:
+    with open(path, encoding="utf-8") as handle:
         return json.load(handle)
 
 
