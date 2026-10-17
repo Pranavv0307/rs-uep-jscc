@@ -178,6 +178,13 @@ def main() -> None:
     if JOB in ("train_kn", "train_all"):
         for ratio, tag in ((0.0625, "1_16"), (0.083333333, "1_12"), (0.333333333, "1_3")):
             train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
+    # Original recipe (v1), extra seeds. Decided after recipes v2/v3 failed to improve on v1 (see PROGRESS_LOG).
+    if JOB == "v1x_a":
+        for seed in (7, 13):
+            train(seed, f"v1x/models/seed{seed}")
+    if JOB == "v1x_b":
+        train(21, "v1x/models/seed21")
+        train(7, "v1x/phase3/kn_1_3_seed7", ("--k_over_n", "0.333333333"))
     if JOB == "v3_a":
         v3_train(2024, "models/seed2024")
         v3_train(42, "models/seed42")
@@ -200,7 +207,7 @@ def main() -> None:
         ratio = {"1_16": 0.0625, "1_12": 0.083333333, "1_3": 0.333333333}[tag]
         train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
     if not (JOB in ("tests", "timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all")
-            or JOB in ("v2_a", "v2_b", "v3_a", "v3_b") or JOB.startswith(("train_seed", "train_kn_"))):
+            or JOB in ("v2_a", "v2_b", "v3_a", "v3_b", "v1x_a", "v1x_b") or JOB.startswith(("train_seed", "train_kn_"))):
         raise SystemExit(f"unknown job {JOB}")
     STATUS["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     sync()
