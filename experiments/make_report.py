@@ -32,7 +32,7 @@ from experiments.reporting import load_result, sweep_insights
 from experiments.reproducibility import write_json
 from experiments.stats_utils import crossover
 
-PRIMARY_SOURCES = ("attention", "predicted", "oracle", "oracle_perimage")
+PRIMARY_SOURCES = ("attention", "predicted", "oracle", "energy", "l1", "oracle_perimage")
 
 
 def best_methods_by_source(summary: Sequence[dict], high_loss_from: float = 0.35) -> Dict[str, str]:
@@ -44,6 +44,29 @@ def best_methods_by_source(summary: Sequence[dict], high_loss_from: float = 0.35
         scheme, source = row["method"].split("@", 1)
         scores[source][row["method"]].append(row["psnr_db_mean_per_image__mean"])
     return {source: max(methods, key=lambda m: np.mean(methods[m])) for source, methods in scores.items()}
+
+
+def methods_from_selection(summary: Sequence[dict], selection_files: Sequence[str]) -> Dict[str, str]:
+    """``{source: method}`` using the tier allocation chosen on the VALIDATION split (never on test results)."""
+    import json
+
+    chosen: Dict[str, str] = {}
+    present = {row["method"] for row in summary}
+    for path in selection_files:
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as handle:
+            selection = json.load(handle)["selection"]
+        for source, entry in selection.items():
+            method = f"{entry['best_overall_high_loss']}@{source}"
+            if method in present:
+                chosen[source] = method
+    return chosen
+
+
+def choose_methods(summary, selection_files) -> Dict[str, str]:
+    chosen = methods_from_selection(summary, selection_files) if selection_files else {}
+    return chosen or best_methods_by_source(summary)  # falls back to test-best only if no selection file exists
 
 
 def relabel(summary: Sequence[dict], prefix: str, keep: Optional[Dict[str, str]] = None) -> List[dict]:
@@ -103,6 +126,9 @@ def main():
     parser.add_argument("--kn", action="append", default=[], help="ratio=path (repeatable)")
     parser.add_argument("--extra_insights", action="append", default=[],
                         help="label=path to any JSON with an 'insights' list (multiseed, transfer, head, ...)")
+    parser.add_argument("--selection", action="append", default=[],
+                        help="selected_schemes.json from the validation sweeps (repeatable); decides which tier "
+                             "allocation represents each ranking source, so no choice is made on test numbers")
     parser.add_argument("--out_dir", default="results/report")
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--wandb_project", default="rs-uep-jscc")
@@ -111,7 +137,7 @@ def main():
 
     main_result = load_result(args.main)
     summary, paired = main_result["seed_summary"], main_result["paired_vs_baseline"]
-    chosen = best_methods_by_source(summary)
+    chosen = choose_methods(summary, args.selection)
     figures: List[str] = []
 
     # Figure 3: primary curves
@@ -142,7 +168,8 @@ def main():
             label, _, path = item.partition("=")
             result = load_result(path)
             model_summary, model_paired = result["seed_summary"], result["paired_vs_baseline"]
-            best = best_methods_by_source(model_summary)
+            own = os.path.join(os.path.dirname(os.path.dirname(path)), "val_sweep", "selected_schemes.json")
+            best = choose_methods(model_summary, [own])
             source = "oracle" if "oracle" in best else next(iter(best), None)
             keep = {"uniform": "uniform"}
             if source:
@@ -202,7 +229,8 @@ def main():
         for item in args.kn:
             ratio, _, path = item.partition("=")
             result = load_result(path)
-            best = best_methods_by_source(result["seed_summary"])
+            own = os.path.join(os.path.dirname(os.path.dirname(path)), "val_sweep", "selected_schemes.json")
+            best = choose_methods(result["seed_summary"], [own])
             source = "oracle" if "oracle" in best else next(iter(best), None)
             if source is None:
                 continue

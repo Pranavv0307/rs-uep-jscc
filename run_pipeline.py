@@ -132,6 +132,13 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
              mod("select_scheme", "--sweep", f"{r}/phase1/val_sweep/val_sweep.json", "--output",
                  f"{r}/phase1/val_sweep/selected_schemes.json"),
              [f"{r}/phase1/val_sweep/selected_schemes.json"]),
+        sweep("val_sweep_energy", "phase1", "Validation sweep, ALL schemes, for the zero-training energy / L1 rankings",
+              best(base42), "val", "energy,l1", f"{r}/phase1/val_sweep_energy", "val_sweep", rank=None,
+              seeds_arg="0,1,2", extra=("--max_images", 5000)),
+        Step("select_energy", "phase1", "Select the tier allocation for the energy / L1 rankings on validation",
+             mod("select_scheme", "--sweep", f"{r}/phase1/val_sweep_energy/val_sweep.json", "--output",
+                 f"{r}/phase1/val_sweep_energy/selected_schemes.json"),
+             [f"{r}/phase1/val_sweep_energy/selected_schemes.json"]),
     ]
 
     # ------------------------------------------------------------------ phase 2
@@ -206,11 +213,11 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
     ]
 
     # ------------------------------------------------------------------ final
-    sel = f"{r}/phase1/val_sweep/selected_schemes.json"
+    sel = f"{r}/phase1/val_sweep/selected_schemes.json+{r}/phase1/val_sweep_energy/selected_schemes.json"
     final_common = ("--include_random_control", "--include_no_rs")
     steps += [
         sweep("final_base", "final", "FINAL TEST sweep, base model (validation-selected schemes, 5 seeds, full test set)",
-              best(base42), "test", "attention,oracle,predicted", f"{r}/final", "final_test", rank=ranking(base42),
+              best(base42), "test", "attention,oracle,predicted,energy,l1", f"{r}/final", "final_test", rank=ranking(base42),
               head=f"{r}/phase1/head/sensitivity_head.pt", schemes=f"{{selected:{sel}}}", extra=final_common),
     ]
     for key in variants:
@@ -237,6 +244,8 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
                  "--output_dir", f"{r}/final/digital"), [f"{r}/final/digital/digital.json"], True, True),
         Step("report", "final", "Figures, headline table and INSIGHTS.md",
              mod("make_report", "--main", f"{r}/final/final_test.json",
+                 "--selection", f"{r}/phase1/val_sweep/selected_schemes.json",
+                 "--selection", f"{r}/phase1/val_sweep_energy/selected_schemes.json",
                  "--compare", f"base={r}/final/final_test.json",
                  "--compare", f"robust_channel={r}/phase2/robust_channel/test_sweep/test_sweep.json",
                  "--compare", f"robust_packet={r}/phase2/robust_packet/test_sweep/test_sweep.json",
@@ -261,14 +270,18 @@ def resolve(command: List[str], dry_run: bool) -> List[str]:
     out = []
     for token in command:
         if token.startswith("{selected:") and token.endswith("}"):
-            path = token[len("{selected:"):-1]
-            if os.path.exists(path):
-                with open(path, encoding="utf-8") as handle:
-                    token = json.load(handle)["schemes_arg"]
+            paths = token[len("{selected:"):-1].split("+")
+            if all(os.path.exists(path) for path in paths):
+                union = []
+                for path in paths:
+                    with open(path, encoding="utf-8") as handle:
+                        union += json.load(handle)["schemes_arg"].split(",")
+                token = ",".join(dict.fromkeys(union))
             elif dry_run:
-                token = f"<schemes chosen on validation: read from {path}>"
+                token = f"<schemes chosen on validation: union of {' + '.join(paths)}>"
             else:
-                raise SystemExit(f"{path} is missing: run the validation sweep and select_base first")
+                missing = [path for path in paths if not os.path.exists(path)]
+                raise SystemExit(f"{missing} missing: run the validation sweeps and select steps first")
         out.append(token)
     return out
 
