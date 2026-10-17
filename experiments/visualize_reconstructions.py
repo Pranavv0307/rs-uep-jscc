@@ -21,6 +21,7 @@ Usage::
 """
 
 import argparse
+import json
 import os
 import torch
 import matplotlib.pyplot as plt
@@ -28,7 +29,9 @@ import matplotlib.pyplot as plt
 from data.cifar10 import get_cifar10_loaders
 from experiments.eval_adjsccq_clean import DEFAULT_CHECKPOINT, load_adjsccq_checkpoint
 from experiments.metrics import psnr_per_image, ssim
-from coding.erasure_channel import sample_erasure_mask, apply_erasure_mask
+from coding.erasure_channel import apply_erasure_mask, sample_master_mask, slice_master_mask
+from experiments.eval_rs_uep import load_oracle_ranking
+from experiments.reproducibility import build_provenance, seed_everything
 from coding.rs_pipeline import (
     NO_RS,
     SCHEME_CANDIDATES,
@@ -42,7 +45,8 @@ DEFAULT_ORACLE_RANKING = [3, 7, 4, 6, 11, 0, 12, 8, 1, 15, 14, 13, 9, 10, 5, 2]
 
 @torch.no_grad()
 def run_visual_comparison(args):
-    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+    seed_everything(args.seed)
+    device =torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     print(f"Using device: {device}")
 
     # 1. Load validated model
@@ -63,11 +67,19 @@ def run_visual_comparison(args):
     x_clean = decoder(clean_latent, snr_db).clamp(0.0, 1.0)
 
     # 4. Define channel order and loss masks
-    oracle_order = torch.tensor(DEFAULT_ORACLE_RANKING, device=device).unsqueeze(0).expand(batch_size, -1)
-    
+    if args.oracle_ranking_file:
+        ranking, _ = load_oracle_ranking(args.oracle_ranking_file)
+    else:
+        print("WARNING: no --oracle_ranking_file given; using the hardcoded ranking, which was derived "
+              "on the test set. Fine for a visual sanity check, not for reported numbers.")
+        ranking = DEFAULT_ORACLE_RANKING
+    oracle_order = torch.tensor(ranking, device=device).unsqueeze(0).expand(batch_size, -1)
+
+    # One master mask; every method faces the same packet losses (no_rs uses its first 64 packets).
     mask_gen = torch.Generator().manual_seed(args.seed)
-    mask_96 = sample_erasure_mask(batch_size, 96, args.erasure_rate, mask_gen)
-    mask_64 = sample_erasure_mask(batch_size, 64, args.erasure_rate, mask_gen)
+    master_mask = sample_master_mask(batch_size, args.erasure_rate, mask_gen)
+    mask_96 = slice_master_mask(master_mask, 96)
+    mask_64 = slice_master_mask(master_mask, NO_RS.total_packets)
 
     # 5. Method A: No RS
     no_rs_packets = encode_blocks(idx, NO_RS, None)
@@ -140,6 +152,20 @@ def run_visual_comparison(args):
     plt.close()
     print(f"\nVisual comparison figure successfully saved to: {args.output}")
 
+    metadata = build_provenance(
+        args=args,
+        checkpoint_path=args.checkpoint,
+        extra_files={"oracle_ranking": args.oracle_ranking_file} if args.oracle_ranking_file else None,
+        split_info={"evaluated_on": f"first {batch_size} images of the official CIFAR-10 test split"},
+        global_seed=args.seed,
+        device=device,
+        extra={"oracle_ranking": ranking, "erasure_rate": args.erasure_rate, "uep_scheme": args.uep_scheme},
+    )
+    sidecar = os.path.splitext(args.output)[0] + ".provenance.json"
+    with open(sidecar, "w") as handle:
+        json.dump(metadata, handle, indent=2)
+    print(f"Provenance saved to: {sidecar}")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Side-by-side visual inspection of JSCC reconstructions.")
@@ -149,6 +175,8 @@ def main():
     parser.add_argument("--erasure_rate", type=float, default=0.40, help="Packet erasure rate (e.g. 0.35, 0.40, 0.50).")
     parser.add_argument("--uep_scheme", default="three_tier_25_50_25", help="Candidate UEP scheme name.")
     parser.add_argument("--seed", type=int, default=42, help="Channel erasure random seed.")
+    parser.add_argument("--oracle_ranking_file", default=None,
+                        help="Frozen train-split oracle ranking JSON (recommended).")
     parser.add_argument("--output", default="results/eval/visual_comparison_side_by_side.png", help="Output figure path.")
     parser.add_argument("--dpi", type=int, default=300, help="Resolution DPI for saved figure.")
     args = parser.parse_args()
