@@ -28,6 +28,12 @@ train:
 output:
   checkpoint_dir: results/checkpoints/adjsccq_identity_train
 
+# Used only by experiments/train_adjsccq_train_split.py. Channel (erasure-mask)
+# seeds, separate from the model-init seed above; roadmap Rule 5 wants 0-4.
+rs_uep:
+  seeds: [0, 1, 2, 3, 4]
+  erasure_rates: [0.0, 0.1, 0.2, 0.3, 0.35, 0.4, 0.45, 0.5]
+
 wandb:
   project: rs-uep-jscc
 

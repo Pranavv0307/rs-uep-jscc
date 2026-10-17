@@ -23,17 +23,28 @@ from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
 from tqdm import tqdm
 
-from coding.erasure_channel import apply_erasure_mask, sample_erasure_mask
+from coding.erasure_channel import apply_erasure_mask, sample_master_mask, slice_master_mask
 from coding.importance import channel_order_from_attention
 from coding.rs_pipeline import (
     NO_RS,
     SCHEME_CANDIDATES,
+    UNSORTED_SCHEMES,
     decode_blocks,
     dequantize_with_fallback,
     encode_blocks,
     random_channel_order,
+    side_info_bytes,
 )
 from experiments.metrics import psnr_per_image, ssim
+from experiments.reproducibility import (
+    aggregate_over_seeds,
+    build_provenance,
+    seed_everything,
+    seed_worker,
+)
+from data.splits import make_loaders
+from experiments import wandb_utils
+from experiments.reproducibility import log_test_access
 from models.adjsccq import ADJSCCQDecoder, ADJSCCQEncoder, NOMINAL_SNR_DB_IDENTITY
 
 
@@ -54,50 +65,6 @@ def anneal_sigma(epoch: int, sigma_start: float, sigma_end: float, anneal_epochs
         return sigma_end
     fraction = epoch / max(anneal_epochs, 1)
     return sigma_start + fraction * (sigma_end - sigma_start)
-
-
-def seed_everything(seed: int) -> None:
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-
-
-def make_loaders(data_dir: str, batch_size: int, num_workers: int,
-                 seed: int, val_size: int) -> Tuple[DataLoader, DataLoader, DataLoader]:
-    transform = transforms.Compose([transforms.ToTensor()])
-    train_dataset = datasets.CIFAR10(
-        root=data_dir, train=True, download=True, transform=transform
-    )
-    test_dataset = datasets.CIFAR10(
-        root=data_dir, train=False, download=True, transform=transform
-    )
-    if not 0 < val_size < len(train_dataset):
-        raise ValueError(f"val_size must be between 1 and {len(train_dataset) - 1}")
-
-    split_generator = torch.Generator().manual_seed(seed)
-    permutation = torch.randperm(len(train_dataset), generator=split_generator).tolist()
-    train_indices = permutation[:-val_size]
-    val_indices = permutation[-val_size:]
-    train_subset = Subset(train_dataset, train_indices)
-    val_subset = Subset(train_dataset, val_indices)
-
-    loader_generator = torch.Generator().manual_seed(seed + 1)
-    train_loader = DataLoader(
-        train_subset, batch_size=batch_size, shuffle=True,
-        generator=loader_generator, num_workers=num_workers,
-        pin_memory=True, drop_last=True,
-    )
-    val_loader = DataLoader(
-        val_subset, batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=True,
-    )
-    test_loader = DataLoader(
-        test_dataset, batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=True,
-    )
-    return train_loader, val_loader, test_loader
 
 
 def _metric_totals(x_hat: torch.Tensor, x: torch.Tensor) -> Tuple[float, float, float, int]:
@@ -153,7 +120,7 @@ def compute_oracle_ranking(encoder, decoder, loader, snr_db: float, device,
     """Rank channels by mean leave-one-channel-out reconstruction PSNR drop."""
     encoder.eval()
     decoder.eval()
-    channel_count = 16
+    channel_count = encoder.encoder.af5.num_channels  # 16 at k/n = 1/6; 6/8/32 in the k/n sweep
     psnr_drop = torch.zeros(channel_count, dtype=torch.float64)
     mse_increase = torch.zeros(channel_count, dtype=torch.float64)
     ssim_drop = torch.zeros(channel_count, dtype=torch.float64)
@@ -235,7 +202,9 @@ def _empty_stats(method: str, scheme_name: str, rate: float, seed: int, scheme) 
         "block_failures": [0 for _ in scheme.tiers],
         "coding_symbols": scheme.transmitted_symbols,
         "data_symbols": scheme.data_symbols,
-        "side_info_bytes_per_image": 16,
+        "coding_overhead_fraction": scheme.overhead,
+        # uniform / no_rs do not sort channels, so they send no ranking.
+        "side_info_bytes_per_image": side_info_bytes(scheme_name),
     }
 
 
@@ -291,19 +260,21 @@ def evaluate_rs(encoder, decoder, loader, snr_db: float, device,
                     oracle_order = torch.tensor(
                         oracle_ranking, device=device
                     ).unsqueeze(0).expand(batch_size, -1)
+                    # One loss realization per (batch, seed, rate), shared by
+                    # every scheme AND by both importance methods.
                     mask_generator = torch.Generator().manual_seed(
                         seed * 100000 + batch_index
                     )
-                    masks = {
-                        96: sample_erasure_mask(batch_size, 96, rate, mask_generator),
-                        64: sample_erasure_mask(batch_size, 64, rate, mask_generator),
-                    }
+                    master_mask = sample_master_mask(batch_size, rate, mask_generator)
                     for scheme_name in scheme_names:
                         scheme = _scheme_for_method(method, scheme_name)
-                        order = attention_order if method == "attention" else oracle_order
+                        if scheme_name in UNSORTED_SCHEMES:
+                            order = None
+                        else:
+                            order = attention_order if method == "attention" else oracle_order
                         packets = encode_blocks(indices, scheme, order)
                         received = apply_erasure_mask(
-                            packets, masks[scheme.total_packets]
+                            packets, slice_master_mask(master_mask, scheme.total_packets)
                         ).received
                         decoded = decode_blocks(received, scheme, order)
                         latent = dequantize_with_fallback(
@@ -357,19 +328,40 @@ def _save_checkpoint(path: str, encoder, decoder, cfg: Dict, split_info: Dict,
 
 def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
          oracle_max_images: Optional[int], eval_max_images: Optional[int],
-         use_wandb: bool, wandb_project: str, wandb_name: Optional[str]) -> None:
+         use_wandb: bool, wandb_project: str, wandb_name: Optional[str],
+         seed_override: Optional[int] = None, split_seed: int = 42,
+         epochs_override: Optional[int] = None, k_over_n_override: Optional[float] = None,
+         skip_rs_sweep: bool = False) -> None:
+    """Train one model.
+
+    ``seed_override`` is the *model* seed (initialisation, shuffling, dropout of
+    nothing); ``split_seed`` fixes the 40k/10k partition so that models trained
+    from different seeds still see the same train/validation split.
+    ``skip_rs_sweep`` leaves the (slow) packet-erasure sweep to
+    ``experiments/eval_rs_uep.py``, which parallelises it and supports every
+    importance source.
+    """
     with open(config_path) as handle:
         cfg = yaml.safe_load(handle)
+    if seed_override is not None:
+        cfg["seed"] = seed_override
+    if epochs_override is not None:
+        cfg["train"]["epochs"] = epochs_override
+    if k_over_n_override is not None:
+        cfg["model"]["k_over_n"] = k_over_n_override
     seed = int(cfg.get("seed", 42))
+    cfg["split_seed"] = split_seed
     seed_everything(seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     os.makedirs(output_dir, exist_ok=True)
 
     train_loader, val_loader, test_loader = make_loaders(
-        data_dir, cfg["data"]["batch_size"], cfg["data"]["num_workers"], seed, val_size
+        data_dir, cfg["data"]["batch_size"], cfg["data"]["num_workers"], split_seed, val_size,
+        loader_seed=seed + 1,
     )
     split_info = {
-        "seed": seed,
+        "seed": split_seed,
+        "model_seed": seed,
         "train_images": len(train_loader.dataset),
         "validation_images": len(val_loader.dataset),
         "test_images": len(test_loader.dataset),
@@ -384,8 +376,10 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         wandb = wandb_module
         run = wandb.init(
             project=wandb_project,
-            name=wandb_name or "adjsccq-train-split",
-            tags=["train-validation-test", "adjsccq", "rs-uep", "oracle"],
+            name=wandb_name or f"adjsccq-train-split-seed{seed}-kn{cfg['model']['k_over_n']:.4f}",
+            tags=["train-validation-test", "adjsccq", "rs-uep", "oracle", f"seed{seed}"],
+            group="models",
+            job_type="train",
             config=cfg,
         )
 
@@ -483,6 +477,8 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
     train_clean = evaluate_clean(encoder, decoder, train_loader, nominal_snr_db, device,
                                  oracle_max_images)
     val_clean = evaluate_clean(encoder, decoder, val_loader, nominal_snr_db, device)
+    log_test_access("experiments.train_adjsccq_train_split", best_path,
+                    note=f"clean test PSNR of model seed {seed} (convergence check)")
     test_clean = evaluate_clean(encoder, decoder, test_loader, nominal_snr_db, device,
                                eval_max_images)
     oracle = compute_oracle_ranking(
@@ -501,17 +497,46 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         "erasure_rates", [0.0, 0.1, 0.2, 0.3, 0.35, 0.4, 0.45, 0.5]
     ))
     seeds = tuple(cfg.get("rs_uep", {}).get("seeds", [0, 1, 2]))
-    rs_rows = evaluate_rs(
-        encoder, decoder, test_loader, nominal_snr_db, device,
-        oracle["ranking_channels_most_to_least_important"], rates, seeds,
-        eval_max_images,
-    )
-    rs_validation_rows = evaluate_rs(
-        encoder, decoder, val_loader, nominal_snr_db, device,
-        oracle["ranking_channels_most_to_least_important"], rates, seeds,
-        eval_max_images,
-    )
+    rs_rows, rs_validation_rows = [], []
+    if skip_rs_sweep or oracle["channel_count"] != 16:
+        print("Skipping the in-script RS sweep; run experiments/eval_rs_uep.py for the full comparison.")
+    else:
+        log_test_access("experiments.train_adjsccq_train_split", best_path,
+                        note=f"in-script RS sweep on the test split, model seed {seed}")
+        rs_rows = evaluate_rs(
+            encoder, decoder, test_loader, nominal_snr_db, device,
+            oracle["ranking_channels_most_to_least_important"], rates, seeds,
+            eval_max_images,
+        )
+        rs_validation_rows = evaluate_rs(
+            encoder, decoder, val_loader, nominal_snr_db, device,
+            oracle["ranking_channels_most_to_least_important"], rates, seeds,
+            eval_max_images,
+        )
+    summary_keys = ("method", "scheme", "erasure_rate")
     metrics = {
+        "metadata": build_provenance(
+            checkpoint_path=best_path,
+            extra_files={"oracle_ranking": oracle_path, "config": config_path},
+            split_info=split_info,
+            global_seed=seed,
+            device=device,
+            extra={
+                "model_seed": seed,
+                "split_seed": split_seed,
+                "k_over_n": cfg["model"]["k_over_n"],
+                "channels": oracle["channel_count"],
+                "rs_sweep_skipped": skip_rs_sweep or oracle["channel_count"] != 16,
+                "channel_seeds": list(seeds),
+                "erasure_rates": list(rates),
+                "oracle_source_split": "train",
+                "side_info_rule": "0 B for uniform/no_rs (no sorting), 16 B/img for sorted schemes",
+                "mask_protocol": "one master 96-packet mask per (batch, seed, rate), "
+                                 "shared by all schemes and both importance methods",
+            },
+        ),
+        "rs_uep_test_seed_summary": aggregate_over_seeds(rs_rows, summary_keys),
+        "rs_uep_validation_seed_summary": aggregate_over_seeds(rs_validation_rows, summary_keys),
         "checkpoint_best": best_path,
         "checkpoint_final": final_path,
         "oracle_ranking": oracle_path,
@@ -572,11 +597,17 @@ if __name__ == "__main__":
         description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--config", default=DEFAULT_CONFIG)
-    parser.add_argument("--data_dir", default="./cifar10_data")
+    parser.add_argument("--data_dir", default="./data")
     parser.add_argument("--output_dir", default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--val_size", type=int, default=DEFAULT_VAL_SIZE)
     parser.add_argument("--oracle_max_images", type=int, default=None)
     parser.add_argument("--eval_max_images", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=None, help="model seed (default: config seed, 42)")
+    parser.add_argument("--split_seed", type=int, default=42, help="fixes the 40k/10k partition")
+    parser.add_argument("--epochs", type=int, default=None, help="override config epochs (smoke tests)")
+    parser.add_argument("--k_over_n", type=float, default=None, help="bandwidth ratio for the k/n sweep")
+    parser.add_argument("--skip_rs_sweep", action="store_true",
+                        help="train + oracle only; run experiments/eval_rs_uep.py for the sweep")
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--wandb_project", default=DEFAULT_PROJECT)
     parser.add_argument("--wandb_name", default=None)
@@ -585,4 +616,6 @@ if __name__ == "__main__":
         args.config, args.data_dir, args.output_dir, args.val_size,
         args.oracle_max_images, args.eval_max_images, args.wandb,
         args.wandb_project, args.wandb_name,
+        seed_override=args.seed, split_seed=args.split_seed, epochs_override=args.epochs,
+        k_over_n_override=args.k_over_n, skip_rs_sweep=args.skip_rs_sweep,
     )
