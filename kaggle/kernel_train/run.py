@@ -115,6 +115,13 @@ def v2_train(seed: int, folder: str, extra: tuple = ()) -> None:
     train(seed, f"v2/{folder}", (*V2_RECIPE, *extra))
 
 
+V3_RECIPE = ("--lr", "3e-4", "--lr_schedule", "cosine", "--grad_clip", "1.0")  # lower base lr (see PROGRESS_LOG)
+
+
+def v3_train(seed: int, folder: str, extra: tuple = ()) -> None:
+    train(seed, f"v3/{folder}", (*V3_RECIPE, *extra))
+
+
 def v2_robust(init_folder: str) -> None:
     variants = {"robust_channel": ("--drop_unit", "channel"), "robust_packet": ("--drop_unit", "packet"),
                 "robust_inpaint": ("--drop_unit", "packet", "--inpaint")}
@@ -171,6 +178,12 @@ def main() -> None:
     if JOB in ("train_kn", "train_all"):
         for ratio, tag in ((0.0625, "1_16"), (0.083333333, "1_12"), (0.333333333, "1_3")):
             train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
+    if JOB == "v3_a":
+        v3_train(2024, "models/seed2024")
+        v3_train(42, "models/seed42")
+    if JOB == "v3_b":
+        v3_train(42, "phase3/kn_1_3", ("--k_over_n", "0.333333333"))
+        v3_train(100, "models/seed100")
     if JOB == "v2_a":
         v2_train(42, "models/seed42")
         v2_robust("v2/models/seed42")
@@ -187,7 +200,7 @@ def main() -> None:
         ratio = {"1_16": 0.0625, "1_12": 0.083333333, "1_3": 0.333333333}[tag]
         train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
     if not (JOB in ("tests", "timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all")
-            or JOB in ("v2_a", "v2_b") or JOB.startswith(("train_seed", "train_kn_"))):
+            or JOB in ("v2_a", "v2_b", "v3_a", "v3_b") or JOB.startswith(("train_seed", "train_kn_"))):
         raise SystemExit(f"unknown job {JOB}")
     STATUS["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     sync()

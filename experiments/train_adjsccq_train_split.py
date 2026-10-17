@@ -332,7 +332,7 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
          seed_override: Optional[int] = None, split_seed: int = 42,
          epochs_override: Optional[int] = None, k_over_n_override: Optional[float] = None,
          skip_rs_sweep: bool = False, lr_schedule: str = "constant", grad_clip: float = 0.0,
-         lr_min: float = 1e-5) -> None:
+         lr_min: float = 1e-5, lr_override: Optional[float] = None) -> None:
     """Train one model.
 
     ``seed_override`` is the *model* seed (initialisation, shuffling, dropout of
@@ -350,6 +350,8 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         cfg["train"]["epochs"] = epochs_override
     if k_over_n_override is not None:
         cfg["model"]["k_over_n"] = k_over_n_override
+    if lr_override is not None:
+        cfg["train"]["lr"] = lr_override
     seed = int(cfg.get("seed", 42))
     cfg["split_seed"] = split_seed
     seed_everything(seed)
@@ -633,6 +635,7 @@ if __name__ == "__main__":
                         help="constant = recipe v1; cosine = stabilised recipe v2")
     parser.add_argument("--grad_clip", type=float, default=0.0, help="max gradient norm; 0 disables (recipe v1)")
     parser.add_argument("--lr_min", type=float, default=1e-5)
+    parser.add_argument("--lr", type=float, default=None, help="override the config learning rate")
     parser.add_argument("--skip_rs_sweep", action="store_true",
                         help="train + oracle only; run experiments/eval_rs_uep.py for the sweep")
     parser.add_argument("--wandb", action="store_true")
@@ -645,5 +648,5 @@ if __name__ == "__main__":
         args.wandb_project, args.wandb_name,
         seed_override=args.seed, split_seed=args.split_seed, epochs_override=args.epochs,
         k_over_n_override=args.k_over_n, skip_rs_sweep=args.skip_rs_sweep,
-        lr_schedule=args.lr_schedule, grad_clip=args.grad_clip, lr_min=args.lr_min,
+        lr_schedule=args.lr_schedule, grad_clip=args.grad_clip, lr_min=args.lr_min, lr_override=args.lr,
     )
