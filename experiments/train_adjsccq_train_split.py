@@ -331,7 +331,8 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
          use_wandb: bool, wandb_project: str, wandb_name: Optional[str],
          seed_override: Optional[int] = None, split_seed: int = 42,
          epochs_override: Optional[int] = None, k_over_n_override: Optional[float] = None,
-         skip_rs_sweep: bool = False) -> None:
+         skip_rs_sweep: bool = False, lr_schedule: str = "constant", grad_clip: float = 0.0,
+         lr_min: float = 1e-5) -> None:
     """Train one model.
 
     ``seed_override`` is the *model* seed (initialisation, shuffling, dropout of
@@ -405,6 +406,17 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         list(encoder.parameters()) + list(decoder.parameters()),
         lr=cfg["train"]["lr"],
     )
+    scheduler = None
+    if lr_schedule == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=cfg["train"]["epochs"], eta_min=lr_min
+        )
+    # Recipe v2 (stabilised): cosine learning-rate decay + gradient clipping. The v1 recipe (constant lr, no
+    # clipping) is kept as the default so earlier runs stay reproducible. Both are recorded in the checkpoint.
+    cfg["train"]["lr_schedule"] = lr_schedule
+    cfg["train"]["grad_clip"] = grad_clip
+    cfg["train"]["lr_min"] = lr_min
+    validation_history = []
     criterion = nn.MSELoss()
     best_val_psnr = float("-inf")
     best_epoch = 0
@@ -426,6 +438,8 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
             reconstruction = decoder(encoder(x, nominal_snr_db), nominal_snr_db)
             loss = criterion(reconstruction, x)
             loss.backward()
+            if grad_clip and grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(list(encoder.parameters()) + list(decoder.parameters()), grad_clip)
             optimizer.step()
             step += 1
             if wandb is not None and step % cfg["train"]["log_every"] == 0:
@@ -440,6 +454,12 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         )
         val_metrics["epoch"] = epoch
         val_metrics["sigma_q"] = sigma
+        val_metrics["lr"] = optimizer.param_groups[0]["lr"]
+        validation_history.append({"epoch": epoch, "sigma_q": sigma, "lr": val_metrics["lr"],
+                                   "val_psnr_db": val_metrics["psnr_db_mean_per_image"],
+                                   "val_ssim": val_metrics["ssim_mean"]})
+        if scheduler is not None:
+            scheduler.step()
         if wandb is not None:
             wandb.log({
                 "validation/mse": val_metrics["mse"],
@@ -546,6 +566,9 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         "clean_validation": val_clean,
         "clean_test": test_clean,
         "oracle": oracle,
+        "validation_history": validation_history,
+        "recipe": {"lr_schedule": lr_schedule, "grad_clip": grad_clip, "lr_min": lr_min,
+                   "lr": cfg["train"]["lr"], "epochs": cfg["train"]["epochs"]},
         "rs_uep_validation": rs_validation_rows,
         "rs_uep_test": rs_rows,
     }
@@ -606,6 +629,10 @@ if __name__ == "__main__":
     parser.add_argument("--split_seed", type=int, default=42, help="fixes the 40k/10k partition")
     parser.add_argument("--epochs", type=int, default=None, help="override config epochs (smoke tests)")
     parser.add_argument("--k_over_n", type=float, default=None, help="bandwidth ratio for the k/n sweep")
+    parser.add_argument("--lr_schedule", default="constant", choices=["constant", "cosine"],
+                        help="constant = recipe v1; cosine = stabilised recipe v2")
+    parser.add_argument("--grad_clip", type=float, default=0.0, help="max gradient norm; 0 disables (recipe v1)")
+    parser.add_argument("--lr_min", type=float, default=1e-5)
     parser.add_argument("--skip_rs_sweep", action="store_true",
                         help="train + oracle only; run experiments/eval_rs_uep.py for the sweep")
     parser.add_argument("--wandb", action="store_true")
@@ -618,4 +645,5 @@ if __name__ == "__main__":
         args.wandb_project, args.wandb_name,
         seed_override=args.seed, split_seed=args.split_seed, epochs_override=args.epochs,
         k_over_n_override=args.k_over_n, skip_rs_sweep=args.skip_rs_sweep,
+        lr_schedule=args.lr_schedule, grad_clip=args.grad_clip, lr_min=args.lr_min,
     )

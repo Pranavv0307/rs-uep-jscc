@@ -108,6 +108,23 @@ def train(seed: int, folder: str, extra: tuple = ()) -> None:
         "--wandb", "--wandb_project", "rs-uep-jscc", "--wandb_name", f"kaggle-{folder.replace('/', '-')}", *extra])
 
 
+V2_RECIPE = ("--lr_schedule", "cosine", "--grad_clip", "1.0")  # stabilised recipe (see PROGRESS_LOG)
+
+
+def v2_train(seed: int, folder: str, extra: tuple = ()) -> None:
+    train(seed, f"v2/{folder}", (*V2_RECIPE, *extra))
+
+
+def v2_robust(init_folder: str) -> None:
+    variants = {"robust_channel": ("--drop_unit", "channel"), "robust_packet": ("--drop_unit", "packet"),
+                "robust_inpaint": ("--drop_unit", "packet", "--inpaint")}
+    for key, extra in variants.items():
+        step(f"train_v2_{key}", [
+            PY, "-m", "experiments.train_erasure_robust", "--init_checkpoint", f"results/{init_folder}/best_val.pth",
+            "--data_dir", "./data", "--output_dir", f"results/v2/phase2/{key}", "--wandb", "--wandb_project",
+            "rs-uep-jscc", "--wandb_name", f"kaggle-v2-{key}", *extra], timeout=9000)
+
+
 def main() -> None:
     os.makedirs(f"{OUT}/wandb", exist_ok=True)
     say(f"job={JOB} python={platform.python_version()} platform={platform.platform()}")
@@ -154,6 +171,14 @@ def main() -> None:
     if JOB in ("train_kn", "train_all"):
         for ratio, tag in ((0.0625, "1_16"), (0.083333333, "1_12"), (0.333333333, "1_3")):
             train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
+    if JOB == "v2_a":
+        v2_train(42, "models/seed42")
+        v2_robust("v2/models/seed42")
+        v2_train(2024, "models/seed2024")
+    if JOB == "v2_b":
+        v2_train(100, "models/seed100")
+        for ratio, tag in ((0.0625, "1_16"), (0.083333333, "1_12"), (0.333333333, "1_3")):
+            v2_train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
     if JOB.startswith("train_seed"):
         seed = int(JOB[len("train_seed"):])
         train(seed, f"models/seed{seed}")
@@ -162,7 +187,7 @@ def main() -> None:
         ratio = {"1_16": 0.0625, "1_12": 0.083333333, "1_3": 0.333333333}[tag]
         train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
     if not (JOB in ("tests", "timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all")
-            or JOB.startswith(("train_seed", "train_kn_"))):
+            or JOB in ("v2_a", "v2_b") or JOB.startswith(("train_seed", "train_kn_"))):
         raise SystemExit(f"unknown job {JOB}")
     STATUS["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     sync()

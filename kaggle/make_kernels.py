@@ -12,7 +12,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 OWNER = "vaishakprasadbhat"
-GPU_JOBS = {"timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all"}
+GPU_JOBS = {"timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all", "v2_a", "v2_b"}
 
 
 def make(spec: str) -> Path:
