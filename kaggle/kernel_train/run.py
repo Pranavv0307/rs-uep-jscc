@@ -100,7 +100,7 @@ def prepare_cifar10() -> None:
 
 
 def train(seed: int, folder: str, extra: tuple = ()) -> None:
-    step(f"train_{folder.replace('/', '_')}", [
+    step(f"train_{folder.replace('/', '_')}", timeout=14400, command=[
         PY, "-m", "experiments.train_adjsccq_train_split", "--seed", str(seed), "--split_seed", "42",
         "--skip_rs_sweep", "--data_dir", "./data", "--output_dir", f"results/{folder}",
         "--wandb", "--wandb_project", "rs-uep-jscc", "--wandb_name", f"kaggle-{folder.replace('/', '-')}", *extra])
@@ -148,7 +148,7 @@ def main() -> None:
             step(f"train_{key}", [
                 PY, "-m", "experiments.train_erasure_robust", "--init_checkpoint", "results/models/seed42/best_val.pth",
                 "--data_dir", "./data", "--output_dir", f"results/phase2/{key}", "--wandb", "--wandb_project",
-                "rs-uep-jscc", "--wandb_name", f"kaggle-{key}", *extra])
+                "rs-uep-jscc", "--wandb_name", f"kaggle-{key}", *extra], timeout=9000)
     if JOB in ("train_kn", "train_all"):
         for ratio, tag in ((0.0625, "1_16"), (0.083333333, "1_12"), (0.333333333, "1_3")):
             train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
