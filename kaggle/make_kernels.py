@@ -28,7 +28,7 @@ def make(spec: str) -> Path:
     metadata = {
         "id": f"{OWNER}/{slug}", "title": slug, "code_file": "run.py", "language": "python",
         "kernel_type": "script", "is_private": "true", "enable_gpu": "true" if (job in GPU_JOBS and not force_cpu) else "false",
-        "enable_tpu": "false", "enable_internet": "true", "dataset_sources": ["pankrzysiu/cifar10-python"], "competition_sources": [],
+        "enable_tpu": "false", "enable_internet": "true", "dataset_sources": ["pankrzysiu/cifar10-python"] + (["vaishakprasadbhat/rs-uep-jscc-models"] if job.startswith("eval_") else []), "competition_sources": [],
         "kernel_sources": [], "model_sources": [],
     }
     (folder / "kernel-metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")

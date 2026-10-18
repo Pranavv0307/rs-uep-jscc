@@ -132,6 +132,31 @@ def v2_robust(init_folder: str) -> None:
             "rs-uep-jscc", "--wandb_name", f"kaggle-v2-{key}", *extra], timeout=9000)
 
 
+EVAL_SCHEMES = "three_tier_25_50_25,two_tier_50_50,three_tier_25_25_50"  # set from the validation selection before launch
+EVAL_SOURCES = "oracle,energy,attention"
+
+
+def find_model(name: str):
+    """Checkpoint and ranking of ``name`` (seed100, kn_1_3, robust_channel, ...) in the attached models dataset."""
+    import glob
+
+    for filename in ("best_val.pth", "adjsccq_erasure_robust.pth"):
+        hits = glob.glob(f"/kaggle/input/**/{name}/{filename}", recursive=True)
+        if hits:
+            return hits[0], os.path.join(os.path.dirname(hits[0]), "oracle_ranking.json")
+    raise SystemExit(f"model {name} not found in /kaggle/input")
+
+
+def evaluate_model(name: str) -> None:
+    checkpoint, ranking = find_model(name)
+    step(f"eval_{name}", [
+        PY, "-m", "experiments.eval_rs_uep", "--checkpoint", checkpoint, "--oracle_ranking_file", ranking,
+        "--data_dir", "./data", "--split", "test", "--importance", EVAL_SOURCES, "--schemes", EVAL_SCHEMES,
+        "--seeds", "0,1,2,3,4", "--include_no_rs", "--workers", "4", "--device", "cpu",
+        "--output_dir", f"results/multiseed/{name}", "--name", "test_sweep", "--wandb", "--wandb_project", "rs-uep-jscc",
+        "--wandb_name", f"kaggle-eval-{name}"], timeout=40000)
+
+
 def main() -> None:
     os.makedirs(f"{OUT}/wandb", exist_ok=True)
     say(f"job={JOB} python={platform.python_version()} platform={platform.platform()}")
@@ -179,6 +204,8 @@ def main() -> None:
         for ratio, tag in ((0.0625, "1_16"), (0.083333333, "1_12"), (0.333333333, "1_3")):
             train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
     # Original recipe (v1), extra seeds. Decided after recipes v2/v3 failed to improve on v1 (see PROGRESS_LOG).
+    if JOB.startswith("eval_"):
+        evaluate_model(JOB[len("eval_"):])
     if JOB == "v1x_a":
         for seed in (7, 13):
             train(seed, f"v1x/models/seed{seed}")
@@ -207,7 +234,7 @@ def main() -> None:
         ratio = {"1_16": 0.0625, "1_12": 0.083333333, "1_3": 0.333333333}[tag]
         train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
     if not (JOB in ("tests", "timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all")
-            or JOB in ("v2_a", "v2_b", "v3_a", "v3_b", "v1x_a", "v1x_b") or JOB.startswith(("train_seed", "train_kn_"))):
+            or JOB in ("v2_a", "v2_b", "v3_a", "v3_b", "v1x_a", "v1x_b") or JOB.startswith("eval_") or JOB.startswith(("train_seed", "train_kn_"))):
         raise SystemExit(f"unknown job {JOB}")
     STATUS["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     sync()
