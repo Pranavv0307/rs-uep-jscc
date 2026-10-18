@@ -225,6 +225,31 @@ def main() -> None:
         for ratio, tag in ((0.0625, "1_16"), (0.083333333, "1_12"), (0.333333333, "1_3")):
             train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
     # Original recipe (v1), extra seeds. Decided after recipes v2/v3 failed to improve on v1 (see PROGRESS_LOG).
+    if JOB in ("kodak", "burst", "digital"):
+        checkpoint, ranking = find_model("seed42")
+        common = ["--wandb", "--wandb_project", "rs-uep-jscc", "--wandb_name", f"kaggle-{JOB}"]
+        if JOB == "kodak":
+            import glob
+
+            kodak = os.path.dirname(glob.glob("/kaggle/input/**/kodim01.png", recursive=True)[0])
+            step("eval_kodak", [
+                PY, "-m", "experiments.eval_kodak", "--checkpoint", checkpoint, "--oracle_ranking_file", ranking,
+                "--kodak_dir", kodak, "--importance", "oracle,energy,attention",
+                "--schemes", "three_tier_25_50_25,three_tier_25_25_50", "--seeds", "0,1,2,3,4", "--include_no_rs",
+                "--save_images_rate", "0.4", "--workers", "4", "--device", "cpu", "--output_dir", "results/phase3/kodak",
+                *common], timeout=40000)
+        elif JOB == "burst":
+            step("eval_burst", [
+                PY, "-m", "experiments.eval_burst", "--checkpoint", checkpoint, "--oracle_ranking_file", ranking,
+                "--data_dir", "./data", "--split", "test", "--importance", "oracle", "--schemes", EVAL_SCHEMES,
+                "--avg_losses", "0.35,0.45", "--burst_lengths", "1,2,4,8,16", "--seeds", "0,1,2,3,4",
+                "--include_no_rs", "--workers", "4", "--device", "cpu", "--output_dir", "results/final/burst",
+                *common], timeout=40000)
+        else:
+            step("eval_digital", [
+                PY, "-m", "experiments.eval_digital_baseline", "--data_dir", "./data", "--split", "test",
+                "--seeds", "0,1,2,3,4", "--workers", "4", "--output_dir", "results/final/digital", *common],
+                timeout=40000)
     if JOB.startswith("evalval_"):
         model = JOB[len("evalval_"):]
         evaluate_validation(model, {"kn_1_16": "phase3/kn_1_16", "kn_1_12": "phase3/kn_1_12", "kn_1_3": "phase3/kn_1_3",
@@ -260,7 +285,7 @@ def main() -> None:
         ratio = {"1_16": 0.0625, "1_12": 0.083333333, "1_3": 0.333333333}[tag]
         train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
     if not (JOB in ("tests", "timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all")
-            or JOB in ("v2_a", "v2_b", "v3_a", "v3_b", "v1x_a", "v1x_b") or JOB.startswith(("eval_", "evalval_")) or JOB.startswith(("train_seed", "train_kn_"))):
+            or JOB in ("v2_a", "v2_b", "v3_a", "v3_b", "v1x_a", "v1x_b") or JOB in ("kodak", "burst", "digital") or JOB.startswith(("eval_", "evalval_")) or JOB.startswith(("train_seed", "train_kn_"))):
         raise SystemExit(f"unknown job {JOB}")
     STATUS["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     sync()
