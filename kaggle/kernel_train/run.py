@@ -157,6 +157,17 @@ def evaluate_model(name: str) -> None:
         "--wandb_name", f"kaggle-eval-{name}"], timeout=40000)
 
 
+def evaluate_validation(name: str, folder: str) -> None:
+    """Validation sweep used to choose the tier allocation (3 seeds x 5,000 images, all schemes)."""
+    checkpoint, ranking = find_model(name)
+    step(f"evalval_{name}", [
+        PY, "-m", "experiments.eval_rs_uep", "--checkpoint", checkpoint, "--oracle_ranking_file", ranking,
+        "--data_dir", "./data", "--split", "val", "--importance", "oracle,energy", "--schemes", "all",
+        "--seeds", "0,1,2", "--max_images", "5000", "--include_no_rs", "--workers", "4", "--device", "cpu",
+        "--output_dir", f"results/{folder}/val_sweep", "--name", "val_sweep", "--wandb", "--wandb_project",
+        "rs-uep-jscc", "--wandb_name", f"kaggle-evalval-{name}"], timeout=40000)
+
+
 def main() -> None:
     os.makedirs(f"{OUT}/wandb", exist_ok=True)
     say(f"job={JOB} python={platform.python_version()} platform={platform.platform()}")
@@ -204,6 +215,11 @@ def main() -> None:
         for ratio, tag in ((0.0625, "1_16"), (0.083333333, "1_12"), (0.333333333, "1_3")):
             train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
     # Original recipe (v1), extra seeds. Decided after recipes v2/v3 failed to improve on v1 (see PROGRESS_LOG).
+    if JOB.startswith("evalval_"):
+        model = JOB[len("evalval_"):]
+        evaluate_validation(model, {"kn_1_16": "phase3/kn_1_16", "kn_1_12": "phase3/kn_1_12", "kn_1_3": "phase3/kn_1_3",
+                                    "robust_channel": "phase2/robust_channel", "robust_packet": "phase2/robust_packet",
+                                    "robust_inpaint": "phase2/robust_inpaint"}.get(model, f"models/{model}"))
     if JOB.startswith("eval_"):
         evaluate_model(JOB[len("eval_"):])
     if JOB == "v1x_a":
@@ -234,7 +250,7 @@ def main() -> None:
         ratio = {"1_16": 0.0625, "1_12": 0.083333333, "1_3": 0.333333333}[tag]
         train(42, f"phase3/kn_{tag}", ("--k_over_n", str(ratio)))
     if not (JOB in ("tests", "timing", "smoke", "train_base", "train_phase2", "train_kn", "train_all")
-            or JOB in ("v2_a", "v2_b", "v3_a", "v3_b", "v1x_a", "v1x_b") or JOB.startswith("eval_") or JOB.startswith(("train_seed", "train_kn_"))):
+            or JOB in ("v2_a", "v2_b", "v3_a", "v3_b", "v1x_a", "v1x_b") or JOB.startswith(("eval_", "evalval_")) or JOB.startswith(("train_seed", "train_kn_"))):
         raise SystemExit(f"unknown job {JOB}")
     STATUS["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     sync()
