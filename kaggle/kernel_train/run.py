@@ -153,8 +153,18 @@ def evaluate_model(name: str) -> None:
         PY, "-m", "experiments.eval_rs_uep", "--checkpoint", checkpoint, "--oracle_ranking_file", ranking,
         "--data_dir", "./data", "--split", "test", "--importance", EVAL_SOURCES, "--schemes", EVAL_SCHEMES,
         "--seeds", "0,1,2,3,4", "--include_no_rs", "--workers", "4", "--device", "cpu",
-        "--output_dir", f"results/multiseed/{name}", "--name", "test_sweep", "--wandb", "--wandb_project", "rs-uep-jscc",
+        "--output_dir", f"results/{model_folder(name)}" + ("" if model_folder(name).startswith("multiseed") else "/test_sweep"),
+        "--name", "test_sweep", "--wandb", "--wandb_project", "rs-uep-jscc",
         "--wandb_name", f"kaggle-eval-{name}"], timeout=40000)
+
+
+def model_folder(name: str) -> str:
+    """Where the pipeline expects this model's results (relative to the results root)."""
+    if name.startswith("robust_"):
+        return f"phase2/{name}"
+    if name.startswith("kn_"):
+        return f"phase3/{name}"
+    return f"multiseed/{name}"  # base models trained from other seeds
 
 
 def evaluate_validation(name: str, folder: str) -> None:

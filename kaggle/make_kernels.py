@@ -26,6 +26,9 @@ def make(spec: str) -> Path:
     code = (HERE / "kernel_train" / "run.py").read_text(encoding="utf-8")
     code = re.sub(r'^JOB = "[a-z_]+"', f'JOB = "{job}"', code, count=1, flags=re.M)
     schemes = os.environ.get("EVAL_SCHEMES")  # fixed from the validation selection before test jobs are generated
+    sources = os.environ.get("EVAL_SOURCES")
+    if sources:
+        code = re.sub(r'^EVAL_SOURCES = "[^"]*"', f'EVAL_SOURCES = "{sources}"', code, count=1, flags=re.M)
     if schemes:
         code = re.sub(r'^EVAL_SCHEMES = "[^"]*"', f'EVAL_SCHEMES = "{schemes}"', code, count=1, flags=re.M)
     (folder / "run.py").write_text(code, encoding="utf-8")
