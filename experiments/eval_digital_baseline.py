@@ -233,6 +233,7 @@ def main():
     parser.add_argument("--name", default="digital")
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--wandb_project", default="rs-uep-jscc")
+    parser.add_argument("--wandb_name", default=None)
     args = parser.parse_args()
 
     seed_everything(args.global_seed)
@@ -268,7 +269,7 @@ def main():
         print(f"{codec}: clean PSNR {clean[codec]['clean_psnr_db']:.2f} dB, "
               f"mean stream {clean[codec]['mean_stream_bytes']:.0f} B, no-fit {clean[codec]['images_that_do_not_fit']}")
 
-    run = wandb_utils.init_run(args.wandb, args.wandb_project, "eval-digital", vars(args), tags=["digital", args.split],
+    run = wandb_utils.init_run(args.wandb, args.wandb_project, args.wandb_name or "eval-digital", vars(args), tags=["digital", args.split],
                                group="phase4", job_type="eval")
     payload = {"images": images, "bitstreams": bitstreams, "data": data, "codecs": codecs,
                "batch_size": args.batch_size, "dataset": "cifar10", "split": args.split}
