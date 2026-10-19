@@ -19,6 +19,7 @@ import wandb
 
 from data.cifar10 import get_cifar10_loaders
 from models.adjsccq import ADJSCCQEncoder, ADJSCCQDecoder, NOMINAL_SNR_DB_IDENTITY
+from experiments.reproducibility import seed_everything
 
 
 def psnr_from_mse(mse: float) -> float:
@@ -61,10 +62,10 @@ def evaluate(encoder, decoder, test_loader, criterion, nominal_snr_db, device, r
 
 
 def main(config_path: str, data_dir: str):
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
-    torch.manual_seed(cfg.get("seed", 42))
+    seed_everything(cfg.get("seed", 42))
     if torch.cuda.is_available():
         device = torch.device("cuda")
     elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():

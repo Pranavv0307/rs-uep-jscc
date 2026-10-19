@@ -1,0 +1,50 @@
+{
+  "checkpoint": "results/phase2/robust_packet/adjsccq_erasure_robust.pth",
+  "source_split": "train",
+  "split": {
+    "seed": 42,
+    "model_seed": 42,
+    "train_images": 40000
+  },
+  "method": "oracle_leave_one_channel_out",
+  "ranking_channels_most_to_least_important": [
+    10,
+    14,
+    13,
+    6,
+    12,
+    2,
+    7,
+    5,
+    9,
+    8,
+    3,
+    11,
+    4,
+    1,
+    15,
+    0
+  ],
+  "psnr_drop_db_by_channel": [
+    0.947345495223999,
+    1.2887225151062012,
+    1.7324650287628174,
+    1.4865078926086426,
+    1.3182896375656128,
+    1.6154710054397583,
+    1.8575619459152222,
+    1.6834379434585571,
+    1.5106953382492065,
+    1.5474388599395752,
+    2.047710657119751,
+    1.3667972087860107,
+    1.7451493740081787,
+    1.8582658767700195,
+    1.9321472644805908,
+    1.254054069519043
+  ],
+  "num_images": 40000,
+  "channel_count": 16,
+  "latent_channel_width": 64,
+  "note": "recomputed for the erasure-robust model (with inpainter if present)"
+}

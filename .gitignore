@@ -41,3 +41,21 @@ week1_execution_plan.md
 amritape/
 images/
 scratch_eval.py
+
+# credentials and local tooling: never commit
+.kaggle/
+.env
+*.env
+.vendor/
+kaggle.json
+.netrc
+.pytest_cache/
+
+# datasets downloaded by experiments.download_data
+data/*.tar.gz
+data/cifar-100-python/
+data/kodak/
+data/stl10_binary/
+data/stl10*
+wandb/
+results/smoke*/

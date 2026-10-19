@@ -1,0 +1,127 @@
+{
+  "metadata": {
+    "git_commit": "ee88d040a66de70635dd5354e65e4d0fb8518160",
+    "git_branch": "phase0-5-pipeline",
+    "dirty_repo": true,
+    "timestamp_utc": "2026-10-17T19:08:32+00:00",
+    "python_version": "3.14.0",
+    "torch_version": "2.10.0+cpu",
+    "numpy_version": "2.4.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "device": null,
+    "device_name": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "cuda_version": null,
+    "cudnn_version": null,
+    "dataset": "CIFAR-10",
+    "split": {
+      "dataset": "cifar10",
+      "split": "val"
+    },
+    "global_seed": 42,
+    "determinism": {
+      "cudnn_deterministic": true,
+      "cudnn_benchmark": false,
+      "deterministic_algorithms": true
+    },
+    "command_line": "C:\\Users\\Subhash\\Documents\\vaisakkkkkkkkkkk\\rs-uep-jscc\\experiments\\feature_saliency.py --checkpoint results/local_models/seed42/best_val.pth --reference_ranking results/local_models/seed42/oracle_ranking.json --data_dir ./data --output_dir results/phase1/saliency --wandb --wandb_project rs-uep-jscc",
+    "args": {
+      "checkpoint": "results/local_models/seed42/best_val.pth",
+      "reference_ranking": "results/local_models/seed42/oracle_ranking.json",
+      "data_dir": "./data",
+      "split": "val",
+      "max_images": 2000,
+      "batch_size": 250,
+      "global_seed": 42,
+      "output_dir": "results/phase1/saliency",
+      "wandb": true,
+      "wandb_project": "rs-uep-jscc"
+    },
+    "checkpoint": {
+      "path": "results/local_models/seed42/best_val.pth",
+      "sha256": "35ee3f09d6643f527e65ed6ffda70037ea761d049d089cd321308835abe9c09f"
+    },
+    "files": {
+      "reference_ranking": {
+        "path": "results/local_models/seed42/oracle_ranking.json",
+        "sha256": "cb80537d5eb7b3a05686fd779d190b13b33717e729d127d4a51df98554b06293"
+      }
+    }
+  },
+  "stats": {
+    "attention": {
+      "within_image_spearman": 0.18033235294117644,
+      "ci95": [
+        0.17101253676470587,
+        0.18990444852941177
+      ],
+      "top1_hit_rate": 0.001,
+      "top4_overlap": 0.329875,
+      "verdict": "no better than chance"
+    },
+    "energy": {
+      "within_image_spearman": 0.8190058823529411,
+      "ci95": [
+        0.8143302205882353,
+        0.8232570220588235
+      ],
+      "top1_hit_rate": 0.595,
+      "top4_overlap": 0.73025,
+      "verdict": "useful"
+    },
+    "variance": {
+      "within_image_spearman": 0.348275,
+      "ci95": [
+        0.3374076838235294,
+        0.35836272058823526
+      ],
+      "top1_hit_rate": 0.037,
+      "top4_overlap": 0.40825,
+      "verdict": "weak"
+    },
+    "l1": {
+      "within_image_spearman": 0.8094514705882352,
+      "ci95": [
+        0.8043670220588235,
+        0.8140406985294117
+      ],
+      "top1_hit_rate": 0.6105,
+      "top4_overlap": 0.724875,
+      "verdict": "useful"
+    },
+    "taylor": {
+      "within_image_spearman": 0.46255882352941174,
+      "ci95": [
+        0.4514144485294118,
+        0.47339459558823527
+      ],
+      "top1_hit_rate": 0.7735,
+      "top4_overlap": 0.54375,
+      "verdict": "weak"
+    },
+    "random": {
+      "within_image_spearman": -0.0029661764705882377,
+      "ci95": [
+        -0.014403161764705883,
+        0.008417536764705877
+      ],
+      "top1_hit_rate": 0.0605,
+      "top4_overlap": 0.249875,
+      "verdict": "no better than chance"
+    },
+    "static_train_ranking": {
+      "within_image_spearman": 0.7477705882352941,
+      "ci95": [
+        0.7422842647058824,
+        0.7538310294117647
+      ],
+      "top1_hit_rate": 0.976,
+      "top4_overlap": 0.755625,
+      "verdict": "useful"
+    }
+  },
+  "insights": [
+    "Proxies ranked by within-image Spearman with the true damage: energy +0.82, l1 +0.81, static_train_ranking +0.75, taylor +0.46, variance +0.35, attention +0.18, random -0.00.",
+    "Static train ranking reaches +0.75: how much of the per-image structure a single global table already explains.",
+    "Best proxy beyond the static table: energy (top-4 overlap 0.73 vs chance 0.25)."
+  ]
+}

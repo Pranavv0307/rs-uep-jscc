@@ -1,0 +1,389 @@
+{
+  "metadata": {
+    "git_commit": "931ed24146ae277b5618b0d1d26097fc250e903b",
+    "git_branch": "phase0-5-pipeline",
+    "dirty_repo": true,
+    "timestamp_utc": "2026-10-19T17:24:36+00:00",
+    "python_version": "3.14.0",
+    "torch_version": "2.10.0+cpu",
+    "numpy_version": "2.4.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "device": null,
+    "device_name": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "cuda_version": null,
+    "cudnn_version": null,
+    "dataset": "CIFAR-10",
+    "split": null,
+    "global_seed": null,
+    "determinism": {
+      "cudnn_deterministic": false,
+      "cudnn_benchmark": false,
+      "deterministic_algorithms": false
+    },
+    "command_line": "C:\\Users\\Subhash\\Documents\\vaisakkkkkkkkkkk\\rs-uep-jscc\\experiments\\multiseed_analysis.py --run seed42=results/gpu/models/seed42 --run seed100=results/gpu/models/seed100 --run seed7=results/gpu/models/seed7 --run seed13=results/gpu/models/seed13 --run seed21=results/gpu/models/seed21 --output_dir results/gpu/phase1/multiseed",
+    "args": {
+      "run": [
+        "seed42=results/gpu/models/seed42",
+        "seed100=results/gpu/models/seed100",
+        "seed7=results/gpu/models/seed7",
+        "seed13=results/gpu/models/seed13",
+        "seed21=results/gpu/models/seed21"
+      ],
+      "output_dir": "results/gpu/phase1/multiseed",
+      "wandb": false,
+      "wandb_project": "rs-uep-jscc"
+    },
+    "checkpoint": null,
+    "files": {
+      "oracle_seed42": {
+        "path": "results/gpu/models/seed42\\oracle_ranking.json",
+        "sha256": "ee29991ce5775eefb1052d44b567858e7d57655397a5d8ace5fd00a2f0eb1623"
+      },
+      "oracle_seed100": {
+        "path": "results/gpu/models/seed100\\oracle_ranking.json",
+        "sha256": "bd0faafdcda13c1898f4773a183c0d90f7acd7625fd2e2f92b5e6ea5780763ea"
+      },
+      "oracle_seed7": {
+        "path": "results/gpu/models/seed7\\oracle_ranking.json",
+        "sha256": "57c8d42e8a9b2cb39ca3276d5b0b3cd8c0e05c420335b6e38d5fe4d79cae56ba"
+      },
+      "oracle_seed13": {
+        "path": "results/gpu/models/seed13\\oracle_ranking.json",
+        "sha256": "3203297f900c75fa8968f649c454044b57f05f2a33a6b383f327070a6c6b6e31"
+      },
+      "oracle_seed21": {
+        "path": "results/gpu/models/seed21\\oracle_ranking.json",
+        "sha256": "c3714e2e291f08d0110948390f0ce4f2bd1f27a64c1effd6b5f8d7f425a349ff"
+      }
+    }
+  },
+  "per_model": [
+    {
+      "name": "seed42",
+      "clean_val_psnr_db": 30.84453610229492,
+      "top4_channels": [
+        10,
+        8,
+        1,
+        7
+      ],
+      "worst_channel_damage_db": 8.66504882659912,
+      "least_critical_damage_db": 0.9240131107330323,
+      "top1_share_of_total_damage": 0.13948105117531345,
+      "top4_share_of_total_damage": 0.4969191676290179,
+      "bands": {
+        "catastrophic (>10 dB)": 0,
+        "high (5-10 dB)": 5,
+        "medium (2-5 dB)": 8,
+        "low (<2 dB)": 3
+      }
+    },
+    {
+      "name": "seed100",
+      "clean_val_psnr_db": 31.29722618408203,
+      "top4_channels": [
+        3,
+        7,
+        1,
+        14
+      ],
+      "worst_channel_damage_db": 13.243726921081542,
+      "least_critical_damage_db": 1.8380908821105957,
+      "top1_share_of_total_damage": 0.19317265818647392,
+      "top4_share_of_total_damage": 0.4506315811734911,
+      "bands": {
+        "catastrophic (>10 dB)": 1,
+        "high (5-10 dB)": 3,
+        "medium (2-5 dB)": 11,
+        "low (<2 dB)": 1
+      }
+    },
+    {
+      "name": "seed7",
+      "clean_val_psnr_db": 31.399572265625,
+      "top4_channels": [
+        4,
+        15,
+        2,
+        6
+      ],
+      "worst_channel_damage_db": 10.473684925842285,
+      "least_critical_damage_db": 2.157760322761536,
+      "top1_share_of_total_damage": 0.1627400173205122,
+      "top4_share_of_total_damage": 0.4692523809089236,
+      "bands": {
+        "catastrophic (>10 dB)": 1,
+        "high (5-10 dB)": 2,
+        "medium (2-5 dB)": 13,
+        "low (<2 dB)": 0
+      }
+    },
+    {
+      "name": "seed13",
+      "clean_val_psnr_db": 31.711311303710936,
+      "top4_channels": [
+        1,
+        15,
+        7,
+        11
+      ],
+      "worst_channel_damage_db": 17.100825686645507,
+      "least_critical_damage_db": 1.5819516170501708,
+      "top1_share_of_total_damage": 0.23215147616268852,
+      "top4_share_of_total_damage": 0.5250718089198664,
+      "bands": {
+        "catastrophic (>10 dB)": 1,
+        "high (5-10 dB)": 4,
+        "medium (2-5 dB)": 10,
+        "low (<2 dB)": 1
+      }
+    },
+    {
+      "name": "seed21",
+      "clean_val_psnr_db": 31.043413854980468,
+      "top4_channels": [
+        11,
+        2,
+        0,
+        9
+      ],
+      "worst_channel_damage_db": 15.906818620300292,
+      "least_critical_damage_db": 1.1289281796455384,
+      "top1_share_of_total_damage": 0.2487178048326856,
+      "top4_share_of_total_damage": 0.5177293830683648,
+      "bands": {
+        "catastrophic (>10 dB)": 1,
+        "high (5-10 dB)": 2,
+        "medium (2-5 dB)": 11,
+        "low (<2 dB)": 2
+      }
+    }
+  ],
+  "summary": {
+    "n_models": 5,
+    "mean_index_aligned_spearman": -0.12852941176470586,
+    "mean_sorted_profile_pearson": 0.9219771055523205,
+    "mean_sorted_profile_l1_db": 0.8251933238828182,
+    "worst_channel_damage_mean_db": 13.07802099609375,
+    "worst_channel_damage_std_db": 3.5520909956730007,
+    "every_model_has_a_catastrophic_channel": false,
+    "top_channel_indices_differ": true
+  },
+  "damages": [
+    [
+      1.5080835752487183,
+      7.281546899414063,
+      1.5205344591140748,
+      2.0758492277145386,
+      5.0368985694885255,
+      2.8541093128204347,
+      2.0178401765823364,
+      6.629173803710938,
+      8.29458034286499,
+      4.553266791915894,
+      8.66504882659912,
+      0.9240131107330323,
+      3.241501819229126,
+      2.51412677192688,
+      2.0085577566146853,
+      2.9983523811340334
+    ],
+    [
+      4.75733173789978,
+      5.906080501556397,
+      4.97118416595459,
+      13.243726921081542,
+      2.833033787536621,
+      4.347247463226318,
+      4.525680278015137,
+      6.577552227020264,
+      2.1137898078918456,
+      2.2031542345046997,
+      3.0461785953521727,
+      2.372952166366577,
+      2.151785603141785,
+      1.8380908821105957,
+      5.167497102355957,
+      2.50372823638916
+    ],
+    [
+      2.546701023101807,
+      2.9313882995605467,
+      7.106823383331299,
+      3.7606593360900877,
+      10.473684925842285,
+      3.6753374893188475,
+      4.39315219078064,
+      2.224709851074219,
+      2.6614952754974364,
+      2.63117180519104,
+      2.1645823024749755,
+      2.9872808612823487,
+      2.6543765544891356,
+      3.7625972568511963,
+      2.157760322761536,
+      8.226665573883057
+    ],
+    [
+      5.391982903289795,
+      17.100825686645507,
+      2.5174435245513918,
+      2.665032991027832,
+      1.5819516170501708,
+      3.7444757011413574,
+      2.4531253463745117,
+      7.437314930725098,
+      2.4546410064697266,
+      2.1402745275497437,
+      3.3402680267333986,
+      5.8671011520385745,
+      3.8358073066711427,
+      2.42194659614563,
+      2.437381991958618,
+      8.272787014770508
+    ],
+    [
+      5.217765755462646,
+      2.103918193244934,
+      7.075127658081055,
+      2.700233472442627,
+      3.5035322750091553,
+      1.1289281796455384,
+      2.1104828290939333,
+      3.3795294330596923,
+      3.55270832901001,
+      4.911819311523438,
+      2.0860625188827515,
+      15.906818620300292,
+      2.340228682899475,
+      3.659174371337891,
+      3.1203007358551025,
+      1.1586567556381226
+    ]
+  ],
+  "aligned_spearman": [
+    [
+      1.0,
+      -0.16176470588235295,
+      -0.2,
+      0.03235294117647059,
+      -0.43823529411764706
+    ],
+    [
+      -0.16176470588235295,
+      1.0,
+      -0.15,
+      0.3058823529411765,
+      -0.19411764705882353
+    ],
+    [
+      -0.2,
+      -0.15,
+      1.0,
+      -0.15588235294117647,
+      -0.026470588235294117
+    ],
+    [
+      0.03235294117647059,
+      0.3058823529411765,
+      -0.15588235294117647,
+      1.0,
+      -0.29705882352941176
+    ],
+    [
+      -0.43823529411764706,
+      -0.19411764705882353,
+      -0.026470588235294117,
+      -0.29705882352941176,
+      1.0
+    ]
+  ],
+  "profile_pearson": [
+    [
+      1.0,
+      0.8620521111317127,
+      0.9264871132622956,
+      0.8633500952046694,
+      0.8135818554526509
+    ],
+    [
+      0.8620521111317127,
+      1.0,
+      0.9298730708314812,
+      0.9828107659410669,
+      0.9805484305085131
+    ],
+    [
+      0.9264871132622956,
+      0.9298730708314812,
+      1.0,
+      0.9524515061160834,
+      0.9231601642677285
+    ],
+    [
+      0.8633500952046694,
+      0.9828107659410669,
+      0.9524515061160834,
+      1.0,
+      0.9854559428070042
+    ],
+    [
+      0.8135818554526509,
+      0.9805484305085131,
+      0.9231601642677285,
+      0.9854559428070042,
+      1.0
+    ]
+  ],
+  "profile_l1": [
+    [
+      0.0,
+      0.9797063201546669,
+      0.7092614374399184,
+      0.9324800044775008,
+      1.0805249312222003
+    ],
+    [
+      0.9797063201546669,
+      0.0,
+      0.7682463483452796,
+      0.7829180141568184,
+      0.6920815706551074
+    ],
+    [
+      0.7092614374399184,
+      0.7682463483452796,
+      0.0,
+      0.7687014392375946,
+      0.8466562106549741
+    ],
+    [
+      0.9324800044775008,
+      0.7829180141568184,
+      0.7687014392375946,
+      0.0,
+      0.6913569624841214
+    ],
+    [
+      1.0805249312222003,
+      0.6920815706551074,
+      0.8466562106549741,
+      0.6913569624841214,
+      0.0
+    ]
+  ],
+  "names": [
+    "seed42",
+    "seed100",
+    "seed7",
+    "seed13",
+    "seed21"
+  ],
+  "insights": [
+    "Most damaging channel per model: seed42 8.7 dB (channel 10), seed100 13.2 dB (channel 3), seed7 10.5 dB (channel 4), seed13 17.1 dB (channel 1), seed21 15.9 dB (channel 11).",
+    "Index-aligned Spearman between models averages -0.13: channel labels do permute between initialisations, as expected.",
+    "Sorted damage profiles agree: mean Pearson 0.922, mean absolute difference 0.83 dB per channel.",
+    "NOT every model has a >10 dB channel: the 'one catastrophic channel' claim needs softening.",
+    "Share of total damage carried by the top-4 channels: seed42 50%, seed100 45%, seed7 47%, seed13 53%, seed21 52%."
+  ]
+}

@@ -1,298 +1,310 @@
-"""Evaluate fixed-budget RS allocations on the ADJSCC-Q test path.
+"""Packet-erasure sweep of tiered Reed-Solomon coding on a trained ADJSCC-Q model.
 
-The evaluator compares schemes on the same images and, for every 96-packet
-scheme, the same sampled packet-erasure mask. Channel-order side information
-is assumed reliable and is counted as 16 bytes per image for tiered methods.
+For every channel seed and loss rate, every method is run on the same images
+and the same loss realisation:
 
-Examples::
+* ``no_rs``          64 packets, no parity (optional)
+* ``uniform``        one RS block over all channels, no ranking, 0 B side info
+* ``<scheme>@<source>``  a tiered scheme whose channel order comes from an
+  importance *source* (``attention``, ``oracle``, ``energy``, ``variance``,
+  ``l1``, ``taylor``, ``predicted``, ``oracle_perimage``, ``static:<name>``,
+  ``random``; see ``experiments/importance_sources.py``); 16 B/img side info.
 
-    python -m experiments.eval_rs_uep --max_images 1024 --seeds 0,1,2
-    python -m experiments.eval_rs_uep --max_images 1000 --plot_output results/eval/rs_uep.png
+Rules enforced (roadmap section 4): one master loss mask shared by all methods
+(Rule 3), 0.0 latent fallback with no ground-truth leakage (Rule 2), overhead
+reported with and without side information (Rule 4), deterministic seeding
+(Rule 5). Outputs: JSON (rows, seed summary, paired gains, insights, provenance),
+markdown, per-image PSNR arrays, and vector+PNG figures.
+
+``--split val`` is the default so tuning never touches the test set; use
+``--split test`` only for final tables (every test access is logged to
+``results/test_access_log.jsonl``).
+
+Example (full protocol, final test table)::
+
+    python -m experiments.eval_rs_uep --checkpoint checkpoints/train_split_adjsccq/best_val.pth \\
+        --split test --importance attention,oracle --oracle_ranking_file \\
+        checkpoints/train_split_adjsccq/oracle_ranking.json --seeds 0,1,2,3,4 \\
+        --include_no_rs --include_random_control --workers 8 --output_dir results/eval/final
 """
 import argparse
-import json
+import itertools
 import os
-from collections import defaultdict
+from typing import Dict, List
 
+import numpy as np
 import torch
 
-from coding.erasure_channel import apply_erasure_mask, sample_erasure_mask
-from coding.importance import channel_order_from_attention
-from coding.rs_pipeline import (
-    NO_RS,
-    SCHEME_CANDIDATES,
-    decode_blocks,
-    dequantize_with_fallback,
-    encode_blocks,
-    random_channel_order,
+from coding.erasure_channel import sample_master_mask
+from coding.interleave import packet_mask_from_timeline
+from coding.rs_pipeline import SCHEME_CANDIDATES
+from coding.scaling import scheme_catalog
+from data.datasets import is_official_test, load_image_tensor
+from experiments import wandb_utils
+from experiments.model_io import load_model_bundle, load_sensitivity_head
+from experiments.pipeline_core import (
+    CellAccumulator,
+    batch_ranges,
+    canonical_source,
+    make_context,
+    make_method_specs,
+    method_order,
+    module_function,
+    precompute,
+    run_tasks,
+    transmit,
 )
-from data.cifar10 import get_cifar10_loaders
-from experiments.eval_adjsccq_clean import DEFAULT_CHECKPOINT, load_adjsccq_checkpoint
-from experiments.metrics import psnr_per_image, ssim
-
+from experiments.reporting import write_sweep_outputs
+from experiments.reproducibility import (
+    build_provenance,
+    file_sha256,
+    log_test_access,
+    seed_everything,
+)
 
 DEFAULT_ERASURE_RATES = (0.0, 0.1, 0.2, 0.3, 0.35, 0.4, 0.45, 0.5)
-DEFAULT_METHODS = tuple(SCHEME_CANDIDATES)
+ORACLE_KEYS = ("ranking_channels_most_to_least_important", "oracle_ranking_channels")
+MODULE = "experiments.eval_rs_uep"
 
 
-def _parse_csv_numbers(value, cast):
+def parse_csv(value, cast=str):
     return tuple(cast(item.strip()) for item in value.split(",") if item.strip())
 
 
-def _method_order(method, attention_order, batch_size, generator):
-    if method == "uniform":
-        return None, 0
-    if method.endswith("_random"):
-        return random_channel_order(batch_size, 16, generator), 16
-    return attention_order, 16
+def pick_device(name: str) -> torch.device:
+    if name == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return torch.device(name)
 
 
-def _method_scheme(method):
-    return NO_RS if method == "no_rs" else SCHEME_CANDIDATES[method.removesuffix("_random")]
+def load_ranking_file(path: str, channels: int = 16, warn_split: str = "train"):
+    """Read a frozen ranking written by either oracle workflow; validate it is a permutation."""
+    import json
+
+    with open(path, "r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    for key in ORACLE_KEYS:
+        if key in data:
+            ranking = [int(c) for c in data[key]]
+            break
+    else:
+        raise KeyError(f"{path} has none of the ranking keys {ORACLE_KEYS}")
+    if sorted(ranking) != list(range(len(ranking))):
+        raise ValueError(f"ranking must be a permutation of 0..{len(ranking) - 1}, got {ranking}")
+    source_split = data.get("source_split", "unknown")
+    if warn_split and source_split != warn_split:
+        print(f"WARNING: ranking {path} has source_split='{source_split}', not '{warn_split}'. A ranking derived "
+              "from evaluation data leaks into the evaluation (roadmap Rule 1); only acceptable as an upper bound.")
+    return ranking, {"path": path, "sha256": file_sha256(path), "source_split": source_split}
 
 
-def _method_names(include_no_rs, include_random):
-    names = list(DEFAULT_METHODS)
-    if include_no_rs:
-        names.insert(0, "no_rs")
-    if include_random:
-        names.extend(f"{name}_random" for name in DEFAULT_METHODS if name != "uniform")
-    return tuple(names)
+# Backwards-compatible name used by earlier scripts and tests.
+load_oracle_ranking = load_ranking_file
 
 
-def _new_stats(method, scheme, erasure_rate, seed, checkpoint):
-    return {
-        "method": method,
-        "scheme_tiers_packets": [list(tier) for tier in scheme.tiers],
-        "packet_size": scheme.packet_size,
-        "data_symbols": scheme.data_symbols,
-        "coding_symbols": scheme.transmitted_symbols,
-        "coding_overhead_fraction": scheme.overhead,
-        "erasure_rate": erasure_rate,
-        "seed": seed,
-        "checkpoint": checkpoint,
-        "images": 0,
-        "psnr_sum": 0.0,
-        "psnr_squared_sum": 0.0,
-        "ssim_sum": 0.0,
-        "failed_symbols": 0,
-        "block_failures": [0 for _ in scheme.tiers],
-        "erased_packets": 0,
-        "total_packets": 0,
-        "side_info_bytes_per_image": 0,
+def collect_rankings(args) -> Dict[str, dict]:
+    """``{name: {"ranking": [...], "info": {...}}}`` from --oracle_ranking_file and --rankings."""
+    entries = []
+    if args.oracle_ranking_file:
+        entries.append(("oracle", args.oracle_ranking_file))
+    for item in parse_csv(args.rankings or ""):
+        name, _, path = item.partition("=")
+        entries.append((name, path))
+    out = {}
+    for name, path in entries:
+        ranking, info = load_ranking_file(path)
+        out[name] = {"ranking": ranking, "info": info}
+    return out
+
+
+def build_context(payload):
+    args = payload["args"]
+    device = torch.device(payload["device"])
+    bundle = load_model_bundle(args["checkpoint"], device)
+    specs = payload["specs"]
+    schemes = scheme_catalog(bundle.channels, bundle.symbols_per_channel, args["packet_size"], args["overhead"],
+                             names=sorted({spec.scheme for spec in specs}))
+    context = make_context(bundle, payload["X"], payload["prep"], schemes, args["batch_size"])
+    context.specs = specs
+    context.args = args
+    context.master_n = max(scheme.total_packets for scheme in schemes.values())
+    return context
+
+
+def run_cell(context, task):
+    """One (channel seed, loss rate) cell: every method on every image."""
+    seed, rate = task
+    args = context.args
+    constants = {"erasure_rate": rate, "seed": seed, "dataset": args["dataset"], "split": args["split"],
+                 "checkpoint": args["checkpoint"], "channels": context.channels}
+    accumulators = {
+        spec.name: CellAccumulator(spec, context.schemes[spec.scheme], context.channels, constants)
+        for spec in context.specs
     }
+    for batch_index, start, stop in batch_ranges(len(context.X), context.batch_size):
+        x = context.X[start:stop].to(context.device)
+        idx = context.prep["idx"][start:stop].long().to(context.device)
+        mask_generator = torch.Generator().manual_seed(seed * 100000 + batch_index)
+        master = sample_master_mask(stop - start, rate, mask_generator, num_packets=context.master_n)
+        for spec in context.specs:
+            scheme = context.schemes[spec.scheme]
+            order_generator = torch.Generator().manual_seed(seed * 100000 + batch_index + 50000)
+            order = method_order(spec, context.prep["orders"], start, stop, context.channels, order_generator,
+                                 context.device)
+            mask = packet_mask_from_timeline(master, scheme, spec.interleave)
+            recon, decoded, erased, total = transmit(context.bundle, idx, scheme, order, mask, context.snr_db)
+            accumulators[spec.name].add(recon, x, decoded, erased, total)
+    rows, per_image = [], {}
+    for name, accumulator in accumulators.items():
+        row, psnr = accumulator.finish()
+        rows.append(row)
+        per_image[f"{name}__s{seed}__r{rate:.3f}"] = psnr
+    return rows, per_image
 
 
-def _finish_stats(stats):
-    images = stats["images"]
-    mean_psnr = stats["psnr_sum"] / images
-    variance = max(stats["psnr_squared_sum"] / images - mean_psnr ** 2, 0.0)
-    side_info = stats["side_info_bytes_per_image"]
-    total_bytes = stats["coding_symbols"] + side_info
-    data_symbols = stats["data_symbols"]
-    return {
-        **stats,
-        "psnr_db_mean_per_image": mean_psnr,
-        "psnr_db_std_per_image": variance ** 0.5,
-        "ssim_mean": stats["ssim_sum"] / images,
-        "failed_symbol_fraction": stats["failed_symbols"] / (images * data_symbols),
-        "block_failure_rate_by_tier": [count / images for count in stats["block_failures"]],
-        "realized_erasure_rate": stats["erased_packets"] / stats["total_packets"],
-        "side_info_bytes_total": images * side_info,
-        "total_transmitted_bytes_per_image": total_bytes,
-        "total_overhead_fraction_including_side_info": total_bytes / data_symbols - 1.0,
-    }
+def build_parser(description=__doc__):
+    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--checkpoint", required=True)
+    parser.add_argument("--data_dir", default="./data")
+    parser.add_argument("--dataset", default="cifar10", choices=["cifar10", "cifar100", "stl10"])
+    parser.add_argument("--split", default="val", help="cifar10: train|val|test; others: train|test")
+    parser.add_argument("--split_seed", type=int, default=None, help="default: the checkpoint's own split seed")
+    parser.add_argument("--batch_size", type=int, default=250)
+    parser.add_argument("--max_images", type=int, default=None, help="default: the whole split")
+    parser.add_argument("--schemes", default="all",
+                        help="comma list from SCHEME_CANDIDATES, or 'all'")
+    parser.add_argument("--importance", default="attention",
+                        help="comma list: attention, oracle, energy, variance, l1, taylor, predicted, "
+                             "oracle_perimage, static:<name>")
+    parser.add_argument("--oracle_ranking_file", default=None, help="ranking used by source 'oracle'")
+    parser.add_argument("--rankings", default=None, help="extra static rankings: name=path,name=path")
+    parser.add_argument("--head_checkpoint", default=None, help="sensitivity head for source 'predicted'")
+    parser.add_argument("--erasure_rates", default=",".join(map(str, DEFAULT_ERASURE_RATES)))
+    parser.add_argument("--seeds", default="0,1,2,3,4", help="channel (erasure-mask) seeds")
+    parser.add_argument("--global_seed", type=int, default=42)
+    parser.add_argument("--packet_size", type=int, default=16)
+    parser.add_argument("--overhead", type=float, default=0.5)
+    parser.add_argument("--include_no_rs", action="store_true")
+    parser.add_argument("--include_random_control", action="store_true")
+    parser.add_argument("--workers", type=int, default=1, help="parallel (seed, rate) cells; results are identical")
+    parser.add_argument("--device", default="cpu", help="cpu | cuda | auto (workers always use cpu)")
+    parser.add_argument("--output_dir", default="results/eval/sweep")
+    parser.add_argument("--name", default="sweep")
+    parser.add_argument("--cdf_rate", type=float, default=0.4)
+    parser.add_argument("--no_per_image", action="store_true")
+    parser.add_argument("--wandb", action="store_true")
+    parser.add_argument("--wandb_project", default="rs-uep-jscc")
+    parser.add_argument("--wandb_name", default=None)
+    parser.add_argument("--wandb_group", default=None)
+    return parser
 
 
-@torch.no_grad()
-def evaluate(args):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    encoder, decoder, config = load_adjsccq_checkpoint(args.checkpoint, device)
-    snr_db = config["af_conditioning"]["nominal_snr_db"]
-    _, loader = get_cifar10_loaders(args.data_dir, batch_size=args.batch_size, num_workers=0)
-    methods = _method_names(args.include_no_rs, args.include_random_control)
-    rates = _parse_csv_numbers(args.erasure_rates, float)
-    seeds = _parse_csv_numbers(args.seeds, int)
-    results = []
-    
-    import itertools
-    import wandb
+def prepare_data(args, sources=None, note: str = ""):
+    """Load model, images and rankings; precompute indices, orders and clean PSNR.
+
+    Shared by every packet-loss study. Returns a dict with ``bundle``, ``device``,
+    ``split_seed``, ``rankings``, ``sources``, ``images``, ``prep``.
+    """
+    device = pick_device(args.device)
+    bundle = load_model_bundle(args.checkpoint, device)
+    split_seed = args.split_seed if args.split_seed is not None else bundle.split_seed
+    if is_official_test(args.dataset, args.split):
+        log_test_access(f"experiments.{note or 'eval'}", args.checkpoint, note=f"name={args.name}")
+    rankings = collect_rankings(args)
+    sources = sources if sources is not None else [canonical_source(s) for s in parse_csv(args.importance or "attention")]
+    for source in sources:
+        if source.startswith("static:") and source[7:] not in rankings:
+            raise SystemExit(f"importance '{source}' needs a ranking named '{source[7:]}' "
+                             "(--rankings name=path / --oracle_ranking_file)")
+    images = load_image_tensor(args.dataset, args.split, args.data_dir, args.max_images, split_seed)
+    head = load_sensitivity_head(args.head_checkpoint, device) if args.head_checkpoint else None
     try:
-        from tqdm import tqdm
-        has_tqdm = True
-    except ImportError:
-        tqdm = lambda x, **kwargs: x
-        has_tqdm = False
-
-    combinations = list(itertools.product(seeds, rates))
-    pbar = tqdm(combinations, desc="Evaluating")
-    for seed, erasure_rate in pbar:
-            if has_tqdm:
-                pbar.set_postfix(seed=seed, rate=f"{erasure_rate:.2f}")
-            accumulators = {
-                method: _new_stats(method, _method_scheme(method), erasure_rate, seed, args.checkpoint)
-                for method in methods
-            }
-            for batch_index, (x, _) in enumerate(loader):
-                if args.max_images is not None:
-                    remaining = args.max_images - batch_index * args.batch_size
-                    if remaining <= 0:
-                        break
-                    x = x[:remaining]
-                x = x.to(device)
-                batch_size = x.shape[0]
-                _, attention, indices = encoder(x, snr_db, return_attn=True, return_indices=True)
-                attention_order = channel_order_from_attention(attention["af5_bottleneck"])
-                mask_generator = torch.Generator().manual_seed(seed * 100000 + batch_index)
-                mask_96 = sample_erasure_mask(batch_size, 96, erasure_rate, mask_generator)
-                mask_64 = sample_erasure_mask(batch_size, 64, erasure_rate, mask_generator)
-
-                for method in methods:
-                    scheme = _method_scheme(method)
-                    order_generator = torch.Generator().manual_seed(seed * 100000 + batch_index + 50000)
-                    order, side_info_bytes = _method_order(
-                        method, attention_order, batch_size, order_generator
-                    )
-                    packets = encode_blocks(indices, scheme, order)
-                    mask = mask_64 if scheme is NO_RS else mask_96
-                    received = apply_erasure_mask(packets, mask).received
-                    decoded = decode_blocks(received, scheme, order)
-                    latent = dequantize_with_fallback(
-                        encoder.quantizer, decoded.indices, decoded.failed
-                    )
-                    reconstruction = decoder(latent, snr_db)
-                    psnr_values = psnr_per_image(reconstruction, x)
-                    ssim_values = ssim(reconstruction, x)
-                    stats = accumulators[method]
-                    stats["images"] += batch_size
-                    stats["psnr_sum"] += psnr_values.sum().item()
-                    stats["psnr_squared_sum"] += (psnr_values ** 2).sum().item()
-                    stats["ssim_sum"] += ssim_values.sum().item()
-                    stats["failed_symbols"] += decoded.failed.sum().item()
-                    stats["block_failures"] = [
-                        total + int(failed)
-                        for total, failed in zip(stats["block_failures"], decoded.block_failed.sum(dim=0).tolist())
-                    ]
-                    stats["erased_packets"] += received.erased.sum().item()
-                    stats["total_packets"] += received.erased.numel()
-                    stats["side_info_bytes_per_image"] = side_info_bytes
-
-            finished_rows = [_finish_stats(accumulators[method]) for method in methods]
-            results.extend(finished_rows)
-            
-            # Live logging to W&B
-            if wandb.run is not None:
-                log_dict = {"erasure_rate": erasure_rate, "seed": seed}
-                for row in finished_rows:
-                    m = row["method"]
-                    log_dict[f"{m}/psnr_db"] = row["psnr_db_mean_per_image"]
-                    log_dict[f"{m}/ssim"] = row["ssim_mean"]
-                    log_dict[f"{m}/realized_erasure"] = row["realized_erasure_rate"]
-                wandb.log(log_dict)
-
-    return results
+        from tqdm import tqdm as progress
+    except ImportError:  # pragma: no cover
+        progress = None
+    prep = precompute(bundle, images, list(sources), args.batch_size,
+                      {name: entry["ranking"] for name, entry in rankings.items()}, head, progress=progress)
+    return {"bundle": bundle, "device": device, "split_seed": split_seed, "rankings": rankings,
+            "sources": list(sources), "images": images, "prep": prep}
 
 
-def write_plot(rows, output):
-    import matplotlib.pyplot as plt
+def evaluation_metadata(args, data: dict, extra: dict) -> dict:
+    """Provenance block shared by every study built on ``prepare_data``."""
+    bundle, rankings = data["bundle"], data["rankings"]
+    extra_files = {f"ranking_{name}": entry["info"]["path"] for name, entry in rankings.items()}
+    if args.head_checkpoint:
+        extra_files["head"] = args.head_checkpoint
+    evaluation = {
+        "importance_sources": data["sources"],
+        "rankings": {name: {**entry["info"], "ranking": entry["ranking"]} for name, entry in rankings.items()},
+        "images_per_seed": len(data["images"]),
+        "is_full_test_set": bool(is_official_test(args.dataset, args.split) and len(data["images"]) >= 10_000),
+        "channels": bundle.channels, "packet_size": args.packet_size, "overhead": args.overhead,
+        "clean_psnr_mean": float(np.mean(data["prep"]["clean_psnr"])),
+        "side_info_rule": "0 B for uniform/no_rs, one byte per channel for sorted methods",
+        **extra,
+    }
+    return build_provenance(
+        args=args, checkpoint_path=args.checkpoint, global_seed=args.global_seed, device=data["device"],
+        extra_files=extra_files,
+        split_info={"dataset": args.dataset, "split": args.split, "split_seed": data["split_seed"]},
+        extra={"evaluation": evaluation})
 
-    grouped = defaultdict(list)
-    for row in rows:
-        grouped[row["method"]].append(row)
-    figure, axis = plt.subplots(figsize=(11, 6))
-    for method, method_rows in grouped.items():
-        method_rows.sort(key=lambda row: row["erasure_rate"])
-        axis.plot(
-            [row["erasure_rate"] for row in method_rows],
-            [row["psnr_db_mean_per_image"] for row in method_rows],
-            marker="o",
-            label=method,
-        )
-    axis.set(xlabel="Packet erasure rate", ylabel="Mean PSNR (dB)", title="RS-UEP validation sweep")
-    axis.grid(alpha=0.25)
-    axis.legend(fontsize="small", ncol=2)
-    figure.tight_layout()
-    figure.savefig(output, dpi=160)
-    plt.close(figure)
 
+def run_and_save(args, default_sources=None):
+    seed_everything(args.global_seed)
+    if not args.importance and default_sources:
+        args.importance = ",".join(default_sources)
+    schemes = list(SCHEME_CANDIDATES) if args.schemes == "all" else list(parse_csv(args.schemes))
+    seeds, rates = parse_csv(args.seeds, int), parse_csv(args.erasure_rates, float)
+    data = prepare_data(args, note="eval_rs_uep")
+    bundle, device, images, prep, rankings, sources = (
+        data["bundle"], data["device"], data["images"], data["prep"], data["rankings"], data["sources"])
+    specs = make_method_specs(schemes, sources, args.include_no_rs, args.include_random_control)
+    print(f"{len(images)} images ({args.dataset}/{args.split}), {len(specs)} methods, "
+          f"{len(seeds)} seeds x {len(rates)} rates, channels={bundle.channels}")
 
-def write_markdown(rows, output):
-    grouped = defaultdict(list)
-    for row in rows:
-        grouped[(row["method"], row["erasure_rate"])].append(row)
+    run = wandb_utils.init_run(args.wandb, args.wandb_project, args.wandb_name or f"eval-{args.name}",
+                               config=vars(args), tags=["eval", args.dataset, args.split], group=args.wandb_group,
+                               job_type="eval")
+    payload = {"args": vars(args), "device": "cpu" if args.workers > 1 else str(device), "specs": specs,
+               "X": images, "prep": prep}
 
-    lines = ["# RS-UEP Evaluation Results\n"]
-    lines.append("| Method | Erasure Rate | PSNR (dB) | SSIM | Realized Erasure |")
-    lines.append("|---|---|---|---|---|")
+    def log_cell(task, result):
+        seed, rate = task
+        metrics = {"seed": seed, "erasure_rate": rate}
+        for row in result[0]:
+            metrics[f"{row['method']}/psnr_db"] = row["psnr_db_mean_per_image"]
+        wandb_utils.log_metrics(run, metrics)
 
-    for (method, rate) in sorted(grouped.keys(), key=lambda k: (k[1], k[0])):
-        group = grouped[(method, rate)]
-        avg_psnr = sum(r["psnr_db_mean_per_image"] for r in group) / len(group)
-        avg_ssim = sum(r["ssim_mean"] for r in group) / len(group)
-        avg_realized = sum(r["realized_erasure_rate"] for r in group) / len(group)
-        lines.append(f"| {method} | {rate:.2f} | {avg_psnr:.2f} | {avg_ssim:.4f} | {avg_realized:.3f} |")
+    tasks = list(itertools.product(seeds, rates))
+    results = run_tasks(module_function(MODULE, "run_cell"), tasks, module_function(MODULE, "build_context"),
+                        payload, args.workers, "evaluating", log_cell)
+    rows: List[dict] = [row for cell_rows, _ in results for row in cell_rows]
+    per_image = {} if args.no_per_image else {k: v for _, cell in results for k, v in cell.items()}
+    if not args.no_per_image:
+        per_image["clean_psnr"] = prep["clean_psnr"]
 
-    with open(output, "w") as f:
-        f.write("\n".join(lines) + "\n")
+    metadata = evaluation_metadata(args, data, {
+        "channel_seeds": list(seeds), "erasure_rates": list(rates),
+        "mask_protocol": "one master mask per (batch, seed, rate) shared by all methods; "
+                         "smaller schemes use its first columns"})
+    outputs = write_sweep_outputs(
+        args.output_dir, args.name, rows, metadata, per_image or None, cdf_rate=args.cdf_rate,
+        title=f"{args.dataset}/{args.split} erasure sweep")
+
+    print("\n".join(f"- {line}" for line in outputs["insights"]))
+    print(f"saved: {outputs['json']}\n       {outputs['markdown']}")
+    wandb_utils.log_table(run, "seed_summary", outputs["summary"])
+    wandb_utils.log_table(run, "paired_vs_uniform", outputs["paired"])
+    wandb_utils.log_images(run, "figures", outputs["figures"])
+    wandb_utils.log_artifact(run, f"{args.name}-results", "eval", [outputs["json"], outputs["markdown"]])
+    wandb_utils.finish(run)
+    return outputs
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--checkpoint", default=DEFAULT_CHECKPOINT)
-    parser.add_argument("--data_dir", default="./cifar10_data")
-    parser.add_argument("--batch_size", type=int, default=256)
-    parser.add_argument("--max_images", type=int, default=1024)
-    parser.add_argument("--erasure_rates", default=",".join(map(str, DEFAULT_ERASURE_RATES)))
-    parser.add_argument("--seeds", default="0,1,2,3,4")
-    parser.add_argument("--include_no_rs", action="store_true")
-    parser.add_argument("--include_random_control", action="store_true")
-    parser.add_argument("--output", default="results/eval/rs_uep_sweep.json")
-    parser.add_argument("--plot_output", default="results/eval/rs_uep_sweep.png")
-    parser.add_argument("--markdown_output", default="results/eval/rs_uep_sweep.md")
-    parser.add_argument("--wandb", action="store_true", help="Log results and plots to wandb")
-    parser.add_argument("--wandb_project", default="rs-uep-jscc")
-    args = parser.parse_args()
-
-    if args.wandb:
-        import wandb
-        print(f"Initializing Weights & Biases (Project: {args.wandb_project})...")
-        wandb.init(project=args.wandb_project, config=vars(args))
-
-    print(f"Starting evaluation on {args.max_images if args.max_images else 'all'} images...")
-    rows = evaluate(args)
-    
-    print("\nEvaluation complete! Saving results...")
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    with open(args.output, "w") as handle:
-        json.dump(rows, handle, indent=2)
-    
-    if args.plot_output:
-        os.makedirs(os.path.dirname(args.plot_output), exist_ok=True)
-        write_plot(rows, args.plot_output)
-        
-    if args.markdown_output:
-        os.makedirs(os.path.dirname(args.markdown_output), exist_ok=True)
-        write_markdown(rows, args.markdown_output)
-
-    print(f"saved {len(rows)} rows -> {args.output}")
-    if args.plot_output:
-        print(f"saved plot -> {args.plot_output}")
-    if args.markdown_output:
-        print(f"saved markdown -> {args.markdown_output}")
-
-    if args.wandb:
-        import wandb
-        if rows:
-            # Log the full dataset as a wandb Table so it can be grouped/graphed in the UI
-            table = wandb.Table(columns=list(rows[0].keys()))
-            for row in rows:
-                table.add_data(*[row[k] for k in table.columns])
-            wandb.log({"rs_uep_sweep_data": table})
-            
-        if args.plot_output:
-            # Log the generated matplotlib figure directly
-            wandb.log({"rs_uep_sweep_plot": wandb.Image(args.plot_output)})
-        wandb.finish()
+    run_and_save(build_parser().parse_args())
 
 
 if __name__ == "__main__":

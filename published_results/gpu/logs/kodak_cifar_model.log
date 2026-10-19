@@ -1,0 +1,57 @@
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: vaishakprasad-bhat (vaishak-prasad-bhat) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: setting up run 4w1o2bkv
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\wandb\run-20261019_002752-4w1o2bkv
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run eval-kodak
+wandb:  View project at https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc
+wandb:  View run at https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc/runs/4w1o2bkv
+rotated 6 portrait images to landscape: ['kodim04.png', 'kodim09.png', 'kodim10.png', 'kodim17.png', 'kodim18.png', 'kodim19.png']
+24 Kodak images (512, 768): clean PSNR 24.31 dB
+uniform: 19 RS blocks, 3072 data / 4608 packets (max block 243)
+three_tier_25_50_25: 21 RS blocks, 3072 data / 4608 packets (max block 231)
+kodak cells:   0%|          | 0/40 [00:00<?, ?it/s]kodak cells:   2%|▎         | 1/40 [26:20<17:07:37, 1580.96s/it]kodak cells:   5%|▌         | 2/40 [26:21<6:52:33, 651.41s/it]  kodak cells:   8%|▊         | 3/40 [28:07<4:07:58, 402.12s/it]kodak cells:  10%|█         | 4/40 [28:56<2:37:41, 262.82s/it]kodak cells:  15%|█▌        | 6/40 [29:04<1:11:15, 125.74s/it]kodak cells:  18%|█▊        | 7/40 [29:24<53:09, 96.67s/it]   kodak cells:  20%|██        | 8/40 [30:06<43:18, 81.19s/it]kodak cells:  22%|██▎       | 9/40 [30:37<34:31, 66.82s/it]kodak cells:  25%|██▌       | 10/40 [30:41<24:15, 48.53s/it]kodak cells:  28%|██▊       | 11/40 [32:06<28:36, 59.17s/it]kodak cells:  30%|███       | 12/40 [32:11<20:13, 43.35s/it]kodak cells:  32%|███▎      | 13/40 [53:29<3:04:23, 409.75s/it]kodak cells:  35%|███▌      | 14/40 [53:39<2:05:57, 290.69s/it]kodak cells:  38%|███▊      | 15/40 [54:45<1:33:06, 223.44s/it]kodak cells:  40%|████      | 16/40 [55:12<1:05:58, 164.94s/it]kodak cells:  42%|████▎     | 17/40 [55:36<47:04, 122.80s/it]  kodak cells:  45%|████▌     | 18/40 [56:18<36:09, 98.62s/it] kodak cells:  48%|████▊     | 19/40 [58:03<35:09, 100.43s/it]kodak cells:  50%|█████     | 20/40 [58:27<25:50, 77.51s/it] kodak cells:  52%|█████▎    | 21/40 [58:43<18:42, 59.09s/it]kodak cells:  55%|█████▌    | 22/40 [59:07<14:32, 48.45s/it]kodak cells:  57%|█████▊    | 23/40 [59:35<12:02, 42.53s/it]kodak cells:  60%|██████    | 24/40 [1:00:28<12:10, 45.63s/it]kodak cells:  62%|██████▎   | 25/40 [1:21:51<1:44:08, 416.57s/it]kodak cells:  65%|██████▌   | 26/40 [1:25:22<1:22:52, 355.16s/it]kodak cells:  68%|██████▊   | 27/40 [1:28:03<1:04:19, 296.92s/it]kodak cells:  70%|███████   | 28/40 [1:28:15<42:16, 211.41s/it]  kodak cells:  72%|███████▎  | 29/40 [1:28:38<28:22, 154.81s/it]kodak cells:  75%|███████▌  | 30/40 [1:28:50<18:39, 111.92s/it]kodak cells:  78%|███████▊  | 31/40 [1:29:38<13:55, 92.83s/it] kodak cells:  80%|████████  | 32/40 [1:30:01<09:33, 71.70s/it]kodak cells:  82%|████████▎ | 33/40 [1:30:19<06:30, 55.81s/it]kodak cells:  85%|████████▌ | 34/40 [1:30:47<04:44, 47.37s/it]kodak cells:  88%|████████▊ | 35/40 [1:32:19<05:03, 60.69s/it]kodak cells:  90%|█████████ | 36/40 [1:33:40<04:27, 66.96s/it]kodak cells:  92%|█████████▎| 37/40 [1:41:55<09:45, 195.23s/it]kodak cells:  95%|█████████▌| 38/40 [1:42:19<04:47, 143.85s/it]kodak cells:  98%|█████████▊| 39/40 [1:43:07<01:55, 115.14s/it]kodak cells: 100%|██████████| 40/40 [1:43:18<00:00, 84.03s/it] kodak cells: 100%|██████████| 40/40 [1:43:21<00:00, 155.04s/it]
+wandb: uploading artifact run-4w1o2bkv-seed_summary; updating run metadata
+wandb: uploading artifact run-4w1o2bkv-seed_summary
+wandb: uploading media\images\figures\kodak_psnr_cdf_r0.4_46_9ff68eae0974c3ff73b8.png; uploading wandb-summary.json; uploading media\table\seed_summary_40_78ca71475dae7f71cffd.table.json; uploading media\images\figures\kodak_psnr_curves_41_bba7729d77e0b0a86154.png; uploading media\images\figures\kodak_gain_heatmap_45_bb90826911b206a21b96.png (+ 5 more)
+wandb: uploading media\images\figures\kodak_psnr_cdf_r0.4_46_9ff68eae0974c3ff73b8.png; uploading media\images\figures\kodak_psnr_curves_41_bba7729d77e0b0a86154.png; uploading media\images\figures\kodak_gain_heatmap_45_bb90826911b206a21b96.png; uploading config.yaml; uploading media\images\figures\kodak_psnr_p5_curves_42_3b5dd16a79030ea9ef93.png (+ 2 more)
+wandb: uploading media\images\figures\kodak_psnr_curves_41_bba7729d77e0b0a86154.png; uploading media\images\figures\kodak_psnr_p5_curves_42_3b5dd16a79030ea9ef93.png; uploading media\images\figures\kodak_block_failure_43_0f6ca4a28811af20da8f.png; uploading media\images\figures\kodak_gain_vs_uniform_44_5ed1315cbb8bdd0bcedd.png
+wandb: uploading media\images\figures\kodak_gain_vs_uniform_44_5ed1315cbb8bdd0bcedd.png
+wandb: uploading history steps 40-46, summary
+wandb: 
+wandb: Run history:
+wandb:                          erasure_rate ▁▁█▂▂▇▇▆▄▄▅▅▇▁▆█▇▂▇▄█▆▇▅▁▂▁▇▄▆█▇▅▂▄▅▆▇█▇
+wandb:                         no_rs/psnr_db ██▁▇▇▂▃▃▅▅▄▄▃█▃▁▂▇▃▅▁▃▂▄█▇█▃▅▃▁▂▄▇▅▄▃▃▁▂
+wandb:                                  seed ▁▃▁▁▃▁▁▁▁▃▁▃▃▅▃▃▃▅▅▅▅▅▅▅▆▆█▆▆▆▆▆▆███████
+wandb: three_tier_25_25_50@attention/psnr_db ██▁██▂▃▄▇▇▅▅▃█▄▁▂█▃▇▁▄▂▅███▃▇▄▁▂▅█▇▅▄▃▁▂
+wandb:    three_tier_25_25_50@oracle/psnr_db ██▂██▃▄▅██▇▇▄█▅▁▃█▄█▂▅▃▇███▄█▅▁▃▇██▇▅▄▂▄
+wandb: three_tier_25_50_25@attention/psnr_db ██▁▇▇▂▃▄▇▆▅▅▃█▄▁▂▇▃▆▁▄▂▆█▇█▃▆▄▁▂▆▇▇▆▄▃▁▂
+wandb:    three_tier_25_50_25@oracle/psnr_db ██▂██▃▄▅██▇█▄█▆▁▃█▄█▂▆▃████▄█▆▁▃████▆▄▂▄
+wandb:                       uniform/psnr_db ██▁██▂▃▄██▇▇▃█▅▁▂█▃█▁▅▂▇███▃█▅▁▂████▅▃▁▂
+wandb: 
+wandb: Run summary:
+wandb:                          erasure_rate 0.45
+wandb:                         no_rs/psnr_db 19.69456
+wandb:                                  seed 4
+wandb: three_tier_25_25_50@attention/psnr_db 19.97162
+wandb:    three_tier_25_25_50@oracle/psnr_db 21.21756
+wandb: three_tier_25_50_25@attention/psnr_db 19.95981
+wandb:    three_tier_25_50_25@oracle/psnr_db 21.293
+wandb:                       uniform/psnr_db 19.6526
+wandb: 
+wandb:  View run eval-kodak at: https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc/runs/4w1o2bkv
+wandb:  View project at: https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc
+wandb: Synced 5 W&B file(s), 7 media file(s), 2 artifact file(s) and 0 other file(s)
+wandb: Find logs at: .\wandb\run-20261019_002752-4w1o2bkv\logs
+- Based on 5 channel seed(s); 24 images per seed. All gains below are paired per seed against the baseline (same packet losses), so they carry no luck-of-the-draw advantage.
+- No low-loss penalty: the best method is never more than 0.05 dB below `uniform` at any erasure_rate in this sweep.
+- Peak gain: +1.46 dB at erasure_rate = 0.45 by three_tier_25_50_25@oracle (95% CI ±0.15, significant).
+- Importance sources ranked by their best scheme's mean gain over erasure_rate >= 0.35: oracle +1.14 dB, attention +0.14 dB.
+- Share of the reference ranking's gain captured: attention 12%. A share above 100% means that source allocated protection better than the reference.
+- Worst-case images at erasure_rate = 0.4: 5th-percentile PSNR 20.06 dB (three_tier_25_50_25@oracle) vs 18.93 dB (uniform).
+- Worst-case images at erasure_rate = 0.5: 5th-percentile PSNR 17.79 dB (three_tier_25_50_25@oracle) vs 17.70 dB (uniform).
+- Seed sensitivity: std across channel seeds stays below 0.3 dB everywhere.
+- `uniform` shows its steepest fall (-2.14 dB) between erasure_rate = 0.3 and 0.35 -- its cliff.
+- ms_ssim_mean at loss 0.4: best three_tier_25_50_25@oracle +0.1540 vs uniform (roadmap target: ΔMS-SSIM ≥ +0.04).

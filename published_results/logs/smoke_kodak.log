@@ -1,0 +1,16 @@
+rotated 0 portrait images to landscape: []
+2 Kodak images (512, 768): clean PSNR 25.32 dB
+uniform: 19 RS blocks, 3072 data / 4608 packets (max block 243)
+three_tier_25_50_25: 21 RS blocks, 3072 data / 4608 packets (max block 231)
+kodak cells:   0%|          | 0/2 [00:00<?, ?it/s]kodak cells:  50%|█████     | 1/2 [00:39<00:39, 39.56s/it]kodak cells: 100%|██████████| 2/2 [01:16<00:00, 38.14s/it]kodak cells: 100%|██████████| 2/2 [01:16<00:00, 38.35s/it]
+- Based on 1 channel seed(s); 2 images per seed. All gains below are paired per seed against the baseline (same packet losses), so they carry no luck-of-the-draw advantage.
+- No low-loss penalty: the best method is never more than 0.05 dB below `uniform` at any erasure_rate in this sweep.
+- Peak gain: +0.23 dB at erasure_rate = 0.4 by no_rs.
+- Importance sources ranked by their best scheme's mean gain over erasure_rate >= 0.35: oracle -0.44 dB.
+- Worst-case images at erasure_rate = 0.4: 5th-percentile PSNR 20.65 dB (no_rs) vs 20.36 dB (uniform).
+- Seed sensitivity: std across channel seeds stays below 0.3 dB everywhere.
+- ms_ssim_mean at loss 0.4: best three_tier_25_50_25@oracle +0.1053 vs uniform (roadmap target: ΔMS-SSIM ≥ +0.04).
+
+real	1m28.567s
+user	0m0.015s
+sys	0m0.015s

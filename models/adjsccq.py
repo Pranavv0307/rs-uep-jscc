@@ -130,3 +130,51 @@ class ADJSCCQEncoder(nn.Module):
 # may need to consume RS-decoded/imputed symbols rather than z_q
 # directly, and this alias should become a real class again.
 ADJSCCQDecoder = ADJSCCDecoder
+
+
+# ---------------------------------------------------------------------------
+# Track A, Step A.3: lightweight online sensitivity predictor
+# ---------------------------------------------------------------------------
+class SensitivityHead(nn.Module):
+    """Predict the per-channel leave-one-out PSNR damage of one image from its latent.
+
+    Input is the continuous latent ``z`` (post power-normalisation, before the
+    quantizer), either flat ``(B, C * D)`` or ``(B, C, H, W)``. Channels are
+    pooled to their mean (and optionally variance) over space, so the head works
+    at any resolution and costs ``F*hidden + hidden*C`` MACs -- a tiny fraction
+    of the encoder. The encoder is frozen; the head is trained against offline
+    leave-one-out labels (see ``experiments/train_sensitivity_head.py``).
+    """
+
+    def __init__(self, in_channels: int = 16, hidden_dim: int = 64, use_variance: bool = False):
+        super().__init__()
+        self.in_channels = in_channels
+        self.use_variance = use_variance
+        features = in_channels * (2 if use_variance else 1)
+        self.net = nn.Sequential(
+            nn.Linear(features, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, in_channels),
+        )
+        # Input standardisation, fitted on the 40k training split and stored with
+        # the weights (identity until fitted).
+        self.register_buffer("feat_mean", torch.zeros(features))
+        self.register_buffer("feat_std", torch.ones(features))
+
+    def features(self, z: torch.Tensor) -> torch.Tensor:
+        batch = z.shape[0]
+        per_channel = z.reshape(batch, self.in_channels, -1)
+        pooled = per_channel.mean(dim=2)
+        if self.use_variance:
+            pooled = torch.cat([pooled, per_channel.var(dim=2, unbiased=False)], dim=1)
+        return pooled
+
+    def normalise(self, features: torch.Tensor) -> torch.Tensor:
+        return (features - self.feat_mean) / self.feat_std
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        return self.net(self.normalise(self.features(z)))
+
+    def macs(self) -> int:
+        linear = [m for m in self.net if isinstance(m, nn.Linear)]
+        return sum(m.in_features * m.out_features for m in linear)

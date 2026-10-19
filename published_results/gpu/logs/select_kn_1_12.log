@@ -1,0 +1,4 @@
+oracle: best overall in the high-loss region = three_tier_25_50_25; per rate = {'0': 'two_tier_25_75', '0.1': 'two_tier_50_50', '0.2': 'two_tier_50_50', '0.3': 'two_tier_50_50', '0.35': 'three_tier_25_50_25', '0.4': 'three_tier_25_50_25', '0.45': 'three_tier_25_50_25', '0.5': 'three_tier_25_25_50'}
+energy: best overall in the high-loss region = three_tier_25_50_25; per rate = {'0': 'two_tier_25_75', '0.1': 'two_tier_50_50', '0.2': 'two_tier_50_50', '0.3': 'two_tier_50_50', '0.35': 'three_tier_25_50_25', '0.4': 'three_tier_25_50_25', '0.45': 'three_tier_25_50_25', '0.5': 'three_tier_25_25_50'}
+--schemes three_tier_25_25_50,three_tier_25_50_25,two_tier_25_75,two_tier_50_50
+saved results/gpu/phase3/kn_1_12/val_sweep/selected_schemes.json

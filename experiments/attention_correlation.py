@@ -134,7 +134,7 @@ def main():
     
     # Save Oracle Ranking explicitly so it can be imported by the evaluation script
     os.makedirs(os.path.dirname(args.ranking_out), exist_ok=True)
-    with open(args.ranking_out, "w") as f:
+    with open(args.ranking_out, "w", encoding="utf-8") as f:
         json.dump({
             "oracle_ranking_channels": oracle_ranking,
             "average_psnr_drops": avg_drops

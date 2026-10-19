@@ -1,0 +1,55 @@
+{
+  "source_sweep": "results/gpu/phase3/kn_1_12/val_sweep/val_sweep.json",
+  "selected_on": "val",
+  "selection": {
+    "oracle": {
+      "per_rate": {
+        "0": "two_tier_25_75",
+        "0.1": "two_tier_50_50",
+        "0.2": "two_tier_50_50",
+        "0.3": "two_tier_50_50",
+        "0.35": "three_tier_25_50_25",
+        "0.4": "three_tier_25_50_25",
+        "0.45": "three_tier_25_50_25",
+        "0.5": "three_tier_25_25_50"
+      },
+      "best_overall_high_loss": "three_tier_25_50_25",
+      "high_loss_mean_psnr": {
+        "two_tier_25_75": 19.887522220611576,
+        "two_tier_50_50": 19.249672730763756,
+        "two_tier_75_25": 18.186039288838703,
+        "three_tier_25_25_50": 20.371236324310303,
+        "three_tier_25_50_25": 20.702071507771812,
+        "three_tier_50_25_25": 19.273667812347412
+      }
+    },
+    "energy": {
+      "per_rate": {
+        "0": "two_tier_25_75",
+        "0.1": "two_tier_50_50",
+        "0.2": "two_tier_50_50",
+        "0.3": "two_tier_50_50",
+        "0.35": "three_tier_25_50_25",
+        "0.4": "three_tier_25_50_25",
+        "0.45": "three_tier_25_50_25",
+        "0.5": "three_tier_25_25_50"
+      },
+      "best_overall_high_loss": "three_tier_25_50_25",
+      "high_loss_mean_psnr": {
+        "two_tier_25_75": 19.76638412475586,
+        "two_tier_50_50": 19.29878250757853,
+        "two_tier_75_25": 18.26410468419393,
+        "three_tier_25_25_50": 20.153541564941403,
+        "three_tier_25_50_25": 20.513690948486328,
+        "three_tier_50_25_25": 19.309458414713543
+      }
+    }
+  },
+  "schemes_union": [
+    "three_tier_25_25_50",
+    "three_tier_25_50_25",
+    "two_tier_25_75",
+    "two_tier_50_50"
+  ],
+  "schemes_arg": "three_tier_25_25_50,three_tier_25_50_25,two_tier_25_75,two_tier_50_50"
+}

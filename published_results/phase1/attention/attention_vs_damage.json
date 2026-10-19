@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "git_commit": "ee88d040a66de70635dd5354e65e4d0fb8518160",
+    "git_branch": "phase0-5-pipeline",
+    "dirty_repo": true,
+    "timestamp_utc": "2026-10-17T19:07:17+00:00",
+    "python_version": "3.14.0",
+    "torch_version": "2.10.0+cpu",
+    "numpy_version": "2.4.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "device": "cpu",
+    "device_name": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "cuda_version": null,
+    "cudnn_version": null,
+    "dataset": "CIFAR-10",
+    "split": {
+      "dataset": "cifar10",
+      "split": "val"
+    },
+    "global_seed": 42,
+    "determinism": {
+      "cudnn_deterministic": true,
+      "cudnn_benchmark": false,
+      "deterministic_algorithms": true
+    },
+    "command_line": "C:\\Users\\Subhash\\Documents\\vaisakkkkkkkkkkk\\rs-uep-jscc\\experiments\\attention_vs_damage.py --checkpoint results/local_models/seed42/best_val.pth --data_dir ./data --split val --output_dir results/phase1/attention --wandb --wandb_project rs-uep-jscc",
+    "args": {
+      "checkpoint": "results/local_models/seed42/best_val.pth",
+      "data_dir": "./data",
+      "split": "val",
+      "max_images": 2000,
+      "batch_size": 250,
+      "global_seed": 42,
+      "output_dir": "results/phase1/attention",
+      "wandb": true,
+      "wandb_project": "rs-uep-jscc"
+    },
+    "checkpoint": {
+      "path": "results/local_models/seed42/best_val.pth",
+      "sha256": "35ee3f09d6643f527e65ed6ffda70037ea761d049d089cd321308835abe9c09f"
+    },
+    "files": {}
+  },
+  "stats": {
+    "attention": {
+      "pooled_pearson": 0.09768789397950413,
+      "pooled_spearman": 0.13896045205177457,
+      "within_image_spearman_mean": 0.18033235294117644,
+      "within_image_spearman_ci95": [
+        0.1704805882352941,
+        0.18910176470588236
+      ],
+      "top4_overlap_mean": 0.329875,
+      "top1_hit_rate": 0.001
+    },
+    "energy": {
+      "pooled_pearson": 0.7565897448688856,
+      "pooled_spearman": 0.7019038691417128,
+      "within_image_spearman_mean": 0.8190058823529411,
+      "within_image_spearman_ci95": [
+        0.814447794117647,
+        0.8238795955882353
+      ],
+      "top4_overlap_mean": 0.73025,
+      "top1_hit_rate": 0.595
+    },
+    "variance": {
+      "pooled_pearson": 0.05461976351550562,
+      "pooled_spearman": 0.17771977275600376,
+      "within_image_spearman_mean": 0.348275,
+      "within_image_spearman_ci95": [
+        0.3378276838235294,
+        0.35911768382352943
+      ],
+      "top4_overlap_mean": 0.40825,
+      "top1_hit_rate": 0.037
+    },
+    "l1": {
+      "pooled_pearson": 0.7445718930668986,
+      "pooled_spearman": 0.712447982171999,
+      "within_image_spearman_mean": 0.8094514705882352,
+      "within_image_spearman_ci95": [
+        0.8044871691176471,
+        0.8144312132352941
+      ],
+      "top4_overlap_mean": 0.724875,
+      "top1_hit_rate": 0.6105
+    },
+    "channel_level": {
+      "spearman_mean_attention_vs_mean_damage": 0.13529411764705881,
+      "chance_top4_overlap": 0.25
+    }
+  },
+  "insights": [
+    "Pooled Pearson between attention and damage: +0.098 (2000 images x 16 channels).",
+    "Within an image, attention ranks the channels with Spearman +0.180 (95% CI +0.170...+0.189).",
+    "Attention's top-4 overlaps the true top-4 by 0.33 (random guessing: 0.25).",
+    "Best cheap latent statistic by within-image Spearman: energy."
+  ]
+}

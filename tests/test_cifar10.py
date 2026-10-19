@@ -5,7 +5,7 @@ from data.cifar10 import get_cifar10_loaders
 
 def test_cifar10_loader():
     train_loader, test_loader = get_cifar10_loaders(
-        data_dir="./cifar10_data",
+        data_dir="./data",  # the verified copy; the old ./cifar10_data default triggered a fresh 170 MB download
         batch_size=4,
         num_workers=0
     )

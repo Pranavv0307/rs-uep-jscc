@@ -109,6 +109,21 @@ SCHEME_CANDIDATES = {
 }
 
 
+# Methods that never reorder channels by importance: no ranking to send, so
+# no side information. Every other method sends a per-channel ranking.
+UNSORTED_SCHEMES = frozenset({"no_rs", "uniform"})
+
+
+def side_info_bytes(method: str, channels: int = 16) -> int:
+    """Bytes per image of ranking side information a method needs (1 byte per channel).
+
+    ``method`` may be a bare scheme name (``"uniform"``, ``"two_tier_50_50_random"``)
+    or a ``scheme@source[#interleave]`` label; only the scheme part decides.
+    """
+    scheme = method.split("@")[0].split("#")[0].removesuffix("_random")
+    return 0 if scheme in UNSORTED_SCHEMES else channels
+
+
 @dataclass
 class DecodedBatch:
     indices: torch.Tensor       # (B, L) long, original latent order

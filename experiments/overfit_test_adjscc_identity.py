@@ -49,7 +49,7 @@ def psnr(mse: torch.Tensor) -> float:
 
 
 def main(config_path: str, data_dir: str, snr_override: float = None):
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
     torch.manual_seed(cfg["seed"])
