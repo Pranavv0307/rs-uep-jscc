@@ -17,7 +17,7 @@ import time
 from experiments.reproducibility import REPO_ROOT, file_sha256, write_json
 
 INCLUDE = ("*.json", "*.md", "*.png", "*.pdf", "*.pth", "*.pt", "*.log", "*.jsonl", "*.txt")
-EXCLUDE_DIRS = {"wandb", "kaggle", "head_labels", "__pycache__", "images", "smoke", "smoke_train", "smoke_robust",
+EXCLUDE_DIRS = {"wandb", "kaggle", "kaggle_upload", "head_labels", "__pycache__", "images", "smoke", "smoke_train", "smoke_robust",
                 "smoke_robust_inpaint", "smoke_head", "smoke_head_labels", "smoke_burst", "smoke_digital",
                 "smoke_kodak", "smoke_transfer", "smoke_saliency", "smoke_attention", "smoke_multiseed",
                 "smoke_report", "smoke_inpaint_eval"}

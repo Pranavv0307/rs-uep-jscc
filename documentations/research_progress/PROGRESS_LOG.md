@@ -257,3 +257,58 @@ number influenced it.
   wins at 10-30%; selected union = {three_tier_25_25_50, three_tier_25_50_25, two_tier_25_75, two_tier_50_50}.
 
 These pilot numbers are not final: they come from a v1 model. They are repeated on the v2 family below.
+
+## Final results, recipe decision and what is still open (2026-10-19)
+
+### Training recipe decision
+Recipe v1 (the project's original) was kept for every model. Recipe v2 (cosine lr decay + gradient clipping) and v3 (lr 3e-4)
+were tried on Kaggle T4 GPUs and **rejected** (they did not fix the instability; see the ledger for the runs);
+the choice used validation data only. Convergence rule: best validation epoch >= 50
+(`results/analysis/convergence_ledger.json`). Primary family = GPU-trained v1 models; the CPU-trained seed 42 is kept as an
+independent replicate (`results/phase1/*`).
+Not converged and flagged: init seed 2024 (peaked at epoch 21, 26.5 dB) and the k/n = 1/3 model (peaked early). They are
+reported in the tables with that label and excluded from the multi-seed conclusions.
+
+### Test results (test split, 5 channel seeds, schemes chosen on validation, paired gains vs uniform RS)
+Best tiered scheme per loss rate, dB gain over uniform (negative = uniform RS is better):
+
+| model | 0.2 | 0.3 | 0.4 | 0.5 |
+|---|---|---|---|---|
+| seed 42 (primary) | -1.15 | -0.87 | +3.00 | +2.10 |
+| seed 100 | -1.66 | -1.46 | +2.83 | +2.04 |
+| seed 7 | -1.78 | -1.60 | +2.59 | +1.86 |
+| seed 13 | -1.65 | -1.32 | +3.23 | +2.23 |
+| seed 21 | -1.41 | -1.09 | +3.11 | +2.18 |
+| seed 2024 (not converged) | -0.87 | -0.74 | +2.09 | +1.42 |
+| robust_channel (B.1, drop-channel fine-tune) | -1.00 | -0.73 | +2.49 | +1.89 |
+| robust_packet (B.1, packet-drop fine-tune) | -1.07 | -1.11 | +1.12 | +0.86 |
+| robust_inpaint (B.2, latent inpainter) | -0.12 | -0.49 | +1.18 | +0.93 |
+| k/n = 1/16 | -1.15 | -0.84 | +1.00 | +1.28 |
+| k/n = 1/12 | -2.19 | -1.74 | +1.49 | +1.82 |
+| k/n = 1/3 (not converged) | -1.35 | -1.69 | +2.51 | +1.37 |
+
+Findings (all from `published_results/gpu/report/INSIGHTS.md`):
+1. Attention gates do not identify damaging channels (within-image Spearman -0.015, top-4 overlap 0.23 vs 0.25 chance).
+2. Importance sources, mean gain over loss >= 0.35: predicted (head) +2.31, energy +2.24, L1 +2.22, oracle +2.19, random +0.50,
+   attention +0.31 dB. The 2048-MAC head reaches 0.92 top-4 overlap (static table 0.88), regret 0.21 dB.
+3. Break-even at ~32% loss; below it uniform RS is better by 0.9-1.8 dB (low-loss penalty).
+4. B.1/B.2 reduce the low-loss penalty only by trading away peak gain; the roadmap hope of eliminating it is **not** met.
+5. Bursts (test): interleaving the tiers across the packet timeline preserves gain at long bursts; sequential tier order does not.
+   Roadmap target "> 3 dB at burst length >= 4" is **not met** (0.5-2.5 dB).
+6. Digital JPEG / JPEG2000 / WebP + RS win at no loss (+2 to +7 dB) and collapse from 35% loss.
+7. The sorted oracle damage profile agrees across seeds (Pearson 0.92); the largest single-channel damage ranges 8.7-17.1 dB, so
+   the "one catastrophic channel" wording is softened.
+
+### Problems met in the final stage
+| problem | cause | fix |
+|---|---|---|
+| Kaggle kodak kernel ended in ERROR; its output could not be downloaded | unresolved; the local run of the same step had finished | Kodak result taken from the local run (`results/gpu/phase3/kodak`) |
+| local evaluation chain no longer running at the end | session restart; remaining steps skipped as outputs already existed | verified every table exists, regenerated the report |
+| `publish_results` would publish 110 MB | duplicate upload folder | excluded `kaggle_upload`; 86 MB published |
+
+### Open items
+* Manuscript not started. Nothing in this repository makes a claim beyond the numbers above.
+* The two non-converged models could be retrained with a recipe that fixes the instability; not done.
+* Kodak results use a CIFAR-trained model and are only qualitative.
+* `pipeline` step `final_base_ref`/`val_base_ref` (seed-42 base evaluated with robust-family settings) was added to
+  `run_pipeline.py` but not run; the base-vs-robust comparison uses `final_base` for the base model.

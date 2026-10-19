@@ -13,31 +13,48 @@ The plan is [`documentations/TOP_TIER_RESEARCH_ROADMAP.md`](documentations/TOP_T
 
 ## Project status
 
-_Last updated: 2026-10-17._ **Honest summary: the foundation is done and measured; the full pipeline for the
-remaining work is written but has not been run end to end yet.**
+_Last updated: 2026-10-19._ **All phases have been run end to end with the full protocol** (models trained from scratch on
+Kaggle, validation-only scheme selection, test split evaluated once per table, 5 channel seeds, every test access logged in
+`results/test_access_log.jsonl`). Small result files are in [`published_results/`](published_results/) (tables, figures,
+checkpoints under 3 MB, logs, manifest with SHA-256); datasets, per-image arrays and large weights stay out of git.
 
 | Stage | State |
 |---|---|
-| ADJSCC-Q model, GF(256) Reed-Solomon codec, packet-interleaved layout, erasure channel | Done, unit-tested |
-| Finding: attention gates do not predict erasure damage; leave-one-out "oracle" does (rho = -0.018 for attention) | Done (earlier runs) |
-| Train/val/test protocol (40k / 10k / 10k), leak-free oracle from the training split | Done; one model trained (seed 42) |
-| **Phase 0** hygiene: shared loss mask, side-info rule, determinism, provenance, seed-level statistics | Code done; 103 unit tests passed |
-| **Phase 1** multi-seed models, attention figure, cross-dataset transfer (A.1), cheap proxies (A.2), sensitivity head (A.3) | Code written, **not yet run** |
-| **Phase 2** erasure-aware decoder training (B.1) and inpainting head (B.2) | Code written, **not yet run** |
-| **Phase 3** Kodak 768x512 (C.1) and bandwidth-ratio sweep (C.2) | Code written, **not yet run** |
-| **Phase 4** Gilbert-Elliott bursts (D.1) and codec + RS baseline (D.2) | Code written, **not yet run** |
-| **Phase 5** figures, headline table, auto-generated insights, orchestrator | Code written, **not yet run** |
+| ADJSCC-Q model, GF(256) Reed-Solomon codec, packet-interleaved layout, erasure channel | Done, unit-tested (180 tests) |
+| Phase 0 hygiene: shared loss mask, side-info rule, determinism, provenance, seed-level statistics | Done |
+| Phase 1: 5 converged seeds, attention vs damage, CIFAR-100 transfer (A.1), cheap proxies (A.2), sensitivity head (A.3) | Done |
+| Phase 2: erasure-aware decoder training (B.1) and inpainting head (B.2) | Done; **partial success** (see below) |
+| Phase 3: Kodak 768x512 (C.1) and bandwidth-ratio sweep (C.2) | Done; one k/n model did not converge |
+| Phase 4: Gilbert-Elliott bursts (D.1) and codec + RS baseline (D.2) | Done |
+| Phase 5: figures, headline table, auto-generated insights, orchestrator | Done: [`published_results/gpu/report/`](published_results/gpu/report/) |
 | Manuscript | Not started |
 
-What has been measured so far (earlier code, 3 channel seeds; to be re-measured with the new evaluator):
+Headline results (CIFAR-10 test, 10,000 images x 5 channel seeds, gains are paired differences to equal-protection RS, 95% CI
+about +-0.03-0.07 dB; best tiered scheme per loss rate):
 
-* clean PSNR 31.2 dB on the official test split (SSIM 0.965), no train/test gap;
-* one latent channel costs ~12 dB when lost, the least important ~1.5 dB;
-* oracle-guided UEP beats equal protection by about +2 dB at 40-45% packet loss, but **loses** by
-  1-1.5 dB at 20-30% loss (the "low-loss penalty" that Phase 2 targets).
+| Packet loss | 0.2 | 0.3 | 0.35 | 0.4 | 0.45 | 0.5 |
+|---|---|---|---|---|---|---|
+| seed-42 model, best tiered scheme vs uniform RS | -1.15 | -0.87 | +1.42 | **+3.00** | +2.83 | +2.00 |
 
-These numbers are not final; they are replaced by the full-protocol results.
-Full chronology, decisions, deviations from the roadmap and known risks: [`documentations/research_progress/PROGRESS_LOG.md`](documentations/research_progress/PROGRESS_LOG.md).
+* **Gain exists only at high loss.** Tiered protection beats uniform RS from about 32% loss; below that it **loses** 0.9-1.8 dB
+  (a block-length effect). Peak gain is +2.6 to +3.2 dB at 40% loss across the five converged seeds.
+* **Which channels are protected matters.** Random-order tiers give only +0.50 dB against +2.19 dB for the oracle ranking
+  (mean over loss >= 0.35). The ADJSCC **attention gates are no better than chance** (+0.31 dB; within-image
+  Spearman -0.015). Latent **energy** (+2.24 dB), L1 and the 2048-MAC **sensitivity head** (+2.31 dB) match or beat the oracle.
+* **The low-loss penalty is not removed.** Erasure-aware training (B.1) and the inpainting head (B.2) shrink the worst
+  penalty from -0.87 dB to -0.64 / -0.41 dB but also cut the peak gain (+3.00 -> +1.17 / +1.22 dB), and the penalty remains.
+* **Bursts:** the roadmap target (> 3 dB at burst length >= 4) is **not met** (gains 0.5-2.5 dB). Interleaving tiers across
+  the timeline keeps most of the gain at long bursts; sending tiers in order loses it (35% loss, burst 16: -0.56 dB vs +0.80 dB).
+* **Digital baselines (JPEG / JPEG2000 / WebP + RS)** are better with no loss (33-38 dB vs 30.9 dB) but fall below tiered Deep
+  JSCC from 35% loss (25.7 dB vs 20.7-23.0 dB at 35%).
+* **Convergence caveats:** under the original training recipe two runs (init seed 2024 and the k/n = 1/3 model) did not converge
+  and are flagged, not hidden (`results/analysis/convergence_ledger.json`). Two alternative recipes (cosine+clip, lower lr)
+  did not fix this and were rejected. The 5 converged seeds are used for conclusions.
+* The Kodak experiment uses the CIFAR-trained model on 768x512 images (clean PSNR 24.3 dB), so absolute quality is low; only
+  the relative behaviour is informative.
+
+Full chronology, decisions, deviations from the roadmap, problems and fixes: [`documentations/research_progress/PROGRESS_LOG.md`](documentations/research_progress/PROGRESS_LOG.md).
+Auto-generated findings: [`published_results/gpu/report/INSIGHTS.md`](published_results/gpu/report/INSIGHTS.md).
 
 ## How to run
 

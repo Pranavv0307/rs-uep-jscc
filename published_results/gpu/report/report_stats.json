@@ -1,0 +1,40 @@
+{
+  "stats": {
+    "main": {
+      "worst_best_gain_db": -0.8722190856933594,
+      "peak_gain_db": 2.998482513427734,
+      "break_even_rate": 0.31899339737150856
+    },
+    "base": {
+      "worst_best_gain_db": -0.8722190856933594,
+      "peak_gain_db": 2.998482513427734,
+      "break_even_rate": 0.31899339737150856
+    },
+    "robust_channel": {
+      "worst_best_gain_db": -0.7337741851806641,
+      "peak_gain_db": 2.512529754638672,
+      "break_even_rate": 0.3196342049961069
+    },
+    "robust_packet": {
+      "worst_best_gain_db": -0.6368663787841797,
+      "peak_gain_db": 1.167913818359375,
+      "break_even_rate": 0.33980688199568143
+    },
+    "robust_inpaint": {
+      "worst_best_gain_db": -0.4126716613769531,
+      "peak_gain_db": 1.2219871520996093,
+      "break_even_rate": 0.32429460368449986
+    }
+  },
+  "chosen": {
+    "attention": "three_tier_25_50_25@attention",
+    "oracle": "three_tier_25_50_25@oracle",
+    "predicted": "three_tier_25_50_25@predicted",
+    "random": "three_tier_25_50_25@random",
+    "energy": "three_tier_25_50_25@energy",
+    "l1": "three_tier_25_50_25@l1"
+  },
+  "sources": {
+    "main": "results/gpu/final/final_test.json"
+  }
+}

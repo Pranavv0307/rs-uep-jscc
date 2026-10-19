@@ -1,0 +1,5 @@
+- Most damaging channel per model: seed42 12.2 dB (channel 10), smoke7 2.0 dB (channel 7).
+- Index-aligned Spearman between models averages +0.01: channel labels do permute between initialisations, as expected.
+- Sorted damage profiles agree: mean Pearson 0.952, mean absolute difference 3.57 dB per channel.
+- NOT every model has a >10 dB channel: the 'one catastrophic channel' claim needs softening.
+- Share of total damage carried by the top-4 channels: seed42 49%, smoke7 61%.

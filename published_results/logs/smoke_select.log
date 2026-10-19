@@ -1,0 +1,4 @@
+attention: best overall in the high-loss region = three_tier_25_50_25; per rate = {'0': 'three_tier_25_50_25', '0.4': 'three_tier_25_50_25', '0.5': 'three_tier_25_50_25'}
+oracle: best overall in the high-loss region = three_tier_25_50_25; per rate = {'0': 'three_tier_25_50_25', '0.4': 'three_tier_25_50_25', '0.5': 'three_tier_25_50_25'}
+--schemes three_tier_25_50_25
+saved results/smoke/selected.json

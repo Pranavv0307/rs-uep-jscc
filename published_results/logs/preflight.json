@@ -1,0 +1,176 @@
+{
+  "time": "2026-10-17T18:38:56",
+  "counts": {
+    "PASS": 27,
+    "WARN": 4,
+    "FAIL": 2,
+    "SKIP": 0
+  },
+  "checks": [
+    {
+      "check": "python",
+      "status": "PASS",
+      "detail": "3.14.0 on Windows-11-10.0.26200-SP0"
+    },
+    {
+      "check": "package torch",
+      "status": "PASS",
+      "detail": "2.10.0+cpu"
+    },
+    {
+      "check": "package torchvision",
+      "status": "PASS",
+      "detail": "0.25.0+cpu"
+    },
+    {
+      "check": "package numpy",
+      "status": "PASS",
+      "detail": "2.4.0"
+    },
+    {
+      "check": "package PIL",
+      "status": "PASS",
+      "detail": "12.1.0"
+    },
+    {
+      "check": "package matplotlib",
+      "status": "PASS",
+      "detail": "3.10.8"
+    },
+    {
+      "check": "package yaml",
+      "status": "PASS",
+      "detail": "6.0.3"
+    },
+    {
+      "check": "package tqdm",
+      "status": "PASS",
+      "detail": "4.70.1"
+    },
+    {
+      "check": "package pytest",
+      "status": "PASS",
+      "detail": "9.1.1"
+    },
+    {
+      "check": "package wandb",
+      "status": "PASS",
+      "detail": "0.27.0"
+    },
+    {
+      "check": "cuda",
+      "status": "WARN",
+      "detail": "no GPU: training will be CPU-only"
+    },
+    {
+      "check": "cpu cores",
+      "status": "PASS",
+      "detail": "16"
+    },
+    {
+      "check": "Pillow JPEG 2000",
+      "status": "PASS",
+      "detail": "available"
+    },
+    {
+      "check": "Pillow WebP",
+      "status": "PASS",
+      "detail": "available"
+    },
+    {
+      "check": "lpips (optional)",
+      "status": "WARN",
+      "detail": "not installed: LPIPS column is skipped on Kodak"
+    },
+    {
+      "check": "BPG codec (optional)",
+      "status": "WARN",
+      "detail": "not installed: digital baseline uses JPEG 2000 / JPEG / WebP"
+    },
+    {
+      "check": "repo root",
+      "status": "PASS",
+      "detail": "C:\\Users\\Subhash\\Documents\\vaisakkkkkkkkkkk\\rs-uep-jscc"
+    },
+    {
+      "check": "git branch",
+      "status": "PASS",
+      "detail": "phase0-5-pipeline @ a4f8b0c"
+    },
+    {
+      "check": "git working tree",
+      "status": "WARN",
+      "detail": "uncommitted changes (results will record dirty_repo=true)"
+    },
+    {
+      "check": "secrets and outputs are git-ignored",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "check": "no credential file is tracked",
+      "status": "PASS",
+      "detail": "ok"
+    },
+    {
+      "check": "free disk space",
+      "status": "PASS",
+      "detail": "42.5 GB"
+    },
+    {
+      "check": "results/ is writable",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "check": "dataset cifar10",
+      "status": "PASS",
+      "detail": "50000 train / 10000 test, md5 verified"
+    },
+    {
+      "check": "dataset cifar100",
+      "status": "FAIL",
+      "detail": "RuntimeError: not usable in C:\\Users\\Subhash\\Documents\\vaisakkkkkkkkkkk\\rs-uep-jscc\\data (download: python -m experiments.download_data --cifar100)"
+    },
+    {
+      "check": "dataset kodak",
+      "status": "FAIL",
+      "detail": "0/24 images in C:\\Users\\Subhash\\Documents\\vaisakkkkkkkkkkk\\rs-uep-jscc\\data\\kodak"
+    },
+    {
+      "check": "seed-42 checkpoint best_val.pth",
+      "status": "PASS",
+      "detail": "sha256 b07b868ade0abd3c..."
+    },
+    {
+      "check": "seed-42 checkpoint oracle_ranking.json",
+      "status": "PASS",
+      "detail": "sha256 2c3cb3a23dba10a1..., ranking is a permutation: True"
+    },
+    {
+      "check": "W&B key in environment or .env",
+      "status": "PASS",
+      "detail": "present (86 characters)"
+    },
+    {
+      "check": "W&B live test",
+      "status": "PASS",
+      "detail": "logged one run to project 'rs-uep-jscc': https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc/runs/frk8wppx"
+    },
+    {
+      "check": "Kaggle credentials",
+      "status": "PASS",
+      "detail": "KAGGLE_API_TOKEN set in .env"
+    },
+    {
+      "check": "kaggle package",
+      "status": "PASS",
+      "detail": "importable"
+    },
+    {
+      "check": "Kaggle API login",
+      "status": "PASS",
+      "detail": "authenticated"
+    }
+  ]
+}

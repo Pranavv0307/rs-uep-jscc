@@ -155,13 +155,22 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
                               "--output_dir", folder, *extra),
                           [f"{folder}/adjsccq_erasure_robust.pth", ranking(folder)], True))
         steps.append(sweep(f"val_{key}", "phase2", f"Validation sweep of {key} (its own oracle ranking)",
-                           f"{folder}/adjsccq_erasure_robust.pth", "val", "oracle", f"{folder}/val_sweep", "val_sweep",
+                           f"{folder}/adjsccq_erasure_robust.pth", "val", "oracle,energy", f"{folder}/val_sweep", "val_sweep",
                            rank=ranking(folder), seeds_arg="0,1,2",
                            extra=("--include_no_rs", "--max_images", 5000)))
         steps.append(Step(f"select_{key}", "phase2", f"Select the tier allocation for {key} on its validation sweep",
                           mod("select_scheme", "--sweep", f"{folder}/val_sweep/val_sweep.json", "--output",
                               f"{folder}/val_sweep/selected_schemes.json"),
                           [f"{folder}/val_sweep/selected_schemes.json"]))
+
+    # The base model the robust variants were fine-tuned from, evaluated with the identical protocol.
+    ref = f"{r}/phase2/base_ref"
+    steps.append(sweep("val_base_ref", "phase2", "Validation sweep of the reference base model (same family as the "
+                       "robust variants)", best(base42), "val", "oracle,energy", f"{ref}/val_sweep", "val_sweep",
+                       rank=ranking(base42), seeds_arg="0,1,2", extra=("--include_no_rs", "--max_images", 5000)))
+    steps.append(Step("select_base_ref", "phase2", "Select the tier allocation for the reference base model",
+                      mod("select_scheme", "--sweep", f"{ref}/val_sweep/val_sweep.json", "--output",
+                          f"{ref}/val_sweep/selected_schemes.json"), [f"{ref}/val_sweep/selected_schemes.json"]))
 
     # ------------------------------------------------------------------ phase 3
     steps += [
@@ -192,7 +201,7 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
                               "--skip_rs_sweep", "--data_dir", data, "--output_dir", folder),
                           [best(folder), ranking(folder)], True))
         steps.append(sweep(f"val_kn_{tag}", "phase3", f"Validation sweep at k/n = {ratio:.4f}", best(folder), "val",
-                           "oracle", f"{folder}/val_sweep", "val_sweep", rank=ranking(folder),
+                           "oracle,energy", f"{folder}/val_sweep", "val_sweep", rank=ranking(folder),
                            seeds_arg="0,1,2", extra=("--include_no_rs", "--max_images", 5000)))
         steps.append(Step(f"select_kn_{tag}", "phase3", f"Select the tier allocation at k/n = {ratio:.4f}",
                           mod("select_scheme", "--sweep", f"{folder}/val_sweep/val_sweep.json", "--output",
@@ -224,14 +233,18 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
         folder = f"{r}/phase2/{key}"
         own = f"{folder}/val_sweep/selected_schemes.json"
         steps.append(sweep(f"final_{key}", "final", f"FINAL TEST sweep, {key} (schemes chosen on its own validation)",
-                           f"{folder}/adjsccq_erasure_robust.pth", "test", "oracle", f"{folder}/test_sweep",
+                           f"{folder}/adjsccq_erasure_robust.pth", "test", "oracle,energy", f"{folder}/test_sweep",
                            "test_sweep", rank=ranking(folder), schemes=f"{{selected:{own}}}",
                            extra=("--include_no_rs",)))
+    own_ref = f"{ref}/val_sweep/selected_schemes.json"
+    steps.append(sweep("final_base_ref", "final", "FINAL TEST sweep, reference base model (same family as the robust "
+                       "variants)", best(base42), "test", "oracle,energy", f"{ref}/test_sweep", "test_sweep",
+                       rank=ranking(base42), schemes=f"{{selected:{own_ref}}}", extra=("--include_no_rs",)))
     for tag in ("1_16", "1_12", "1_3"):
         folder = f"{r}/phase3/kn_{tag}"
         own = f"{folder}/val_sweep/selected_schemes.json"
         steps.append(sweep(f"final_kn_{tag}", "final", f"FINAL TEST sweep, k/n sweep point {tag}", best(folder),
-                           "test", "oracle", f"{folder}/test_sweep", "test_sweep", rank=ranking(folder),
+                           "test", "oracle,energy", f"{folder}/test_sweep", "test_sweep", rank=ranking(folder),
                            schemes=f"{{selected:{own}}}", extra=("--include_no_rs",)))
     steps += [
         Step("burst_test", "final", "FINAL TEST burst study (Gilbert-Elliott, interleaved vs sequential)",

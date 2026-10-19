@@ -1,0 +1,94 @@
+Sun Oct 18 05:23:17 IST 2026 group 1: phase-1 analyses and base-model sweeps
+
+[1/9] phase1/attention_vs_damage: Figure 2: attention vs true damage (validation images)
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.attention_vs_damage --checkpoint results/gpu/models/seed42/best_val.pth --data_dir ./data --split val --output_dir results/gpu/phase1/attention --wandb --wandb_project rs-uep-jscc
+  -> exit 0 in 31.9 s (log: results/gpu/logs/attention_vs_damage.log)
+
+[2/9] phase1/transfer_A1: Step A.1: does the ranking transfer to CIFAR-100?
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.transfer_sensitivity --checkpoint results/gpu/models/seed42/best_val.pth --reference_ranking results/gpu/models/seed42/oracle_ranking.json --targets cifar100 --data_dir ./data --output_dir results/gpu/phase1/transfer --wandb --wandb_project rs-uep-jscc
+  -> exit 0 in 45.8 s (log: results/gpu/logs/transfer_A1.log)
+
+[3/9] phase1/saliency_A2: Step A.2: proxy quality (energy, variance, L1, Taylor) vs true damage
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.feature_saliency --checkpoint results/gpu/models/seed42/best_val.pth --reference_ranking results/gpu/models/seed42/oracle_ranking.json --data_dir ./data --output_dir results/gpu/phase1/saliency --wandb --wandb_project rs-uep-jscc
+  -> exit 0 in 32.9 s (log: results/gpu/logs/saliency_A2.log)
+
+[4/9] phase1/head_A3: Step A.3: label 40k+10k images and train the sensitivity head (5 head seeds)
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.train_sensitivity_head --checkpoint results/gpu/models/seed42/best_val.pth --reference_ranking results/gpu/models/seed42/oracle_ranking.json --data_dir ./data --labels_dir results/gpu/phase1/head_labels --output_dir results/gpu/phase1/head --seeds 0,1,2,3,4 --wandb --wandb_project rs-uep-jscc
+  -> exit 0 in 400.4 s (log: results/gpu/logs/head_A3.log)
+
+[5/9] phase1/saliency_sweep: Validation sweep at 40% loss: every importance source vs oracle bounds
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.eval_rs_uep --checkpoint results/gpu/models/seed42/best_val.pth --data_dir ./data --split val --importance attention,energy,variance,l1,taylor,predicted,oracle,oracle_perimage --schemes three_tier_25_50_25 --erasure_rates 0.3,0.4,0.5 --seeds 0,1,2,3,4 --output_dir results/gpu/phase1/saliency_sweep --name saliency_sweep --include_random_control --include_no_rs --oracle_ranking_file results/gpu/models/seed42/oracle_ranking.json --head_checkpoint results/gpu/phase1/head/sensitivity_head.pt --wandb --wandb_project rs-uep-jscc --workers 12
+  -> exit 0 in 3070.8 s (log: results/gpu/logs/saliency_sweep.log)
+
+[6/9] phase1/val_sweep_base: Validation sweep, ALL schemes, for choosing the tier allocation
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.eval_rs_uep --checkpoint results/gpu/models/seed42/best_val.pth --data_dir ./data --split val --importance attention,oracle,predicted --schemes all --erasure_rates 0.0,0.1,0.2,0.3,0.35,0.4,0.45,0.5 --seeds 0,1,2 --output_dir results/gpu/phase1/val_sweep --name val_sweep --include_random_control --include_no_rs --max_images 5000 --oracle_ranking_file results/gpu/models/seed42/oracle_ranking.json --head_checkpoint results/gpu/phase1/head/sensitivity_head.pt --wandb --wandb_project rs-uep-jscc --workers 12
+  -> exit 0 in 5073.4 s (log: results/gpu/logs/val_sweep_base.log)
+
+[7/9] phase1/select_base: Select the tier allocation on the validation sweep
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.select_scheme --sweep results/gpu/phase1/val_sweep/val_sweep.json --output results/gpu/phase1/val_sweep/selected_schemes.json
+  -> exit 0 in 7.1 s (log: results/gpu/logs/select_base.log)
+
+[8/9] phase1/val_sweep_energy: Validation sweep, ALL schemes, for the zero-training energy / L1 rankings
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.eval_rs_uep --checkpoint results/gpu/models/seed42/best_val.pth --data_dir ./data --split val --importance energy,l1 --schemes all --erasure_rates 0.0,0.1,0.2,0.3,0.35,0.4,0.45,0.5 --seeds 0,1,2 --output_dir results/gpu/phase1/val_sweep_energy --name val_sweep --max_images 5000 --wandb --wandb_project rs-uep-jscc --workers 12
+  -> exit 0 in 2716.6 s (log: results/gpu/logs/val_sweep_energy.log)
+
+[9/9] phase1/select_energy: Select the tier allocation for the energy / L1 rankings on validation
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.select_scheme --sweep results/gpu/phase1/val_sweep_energy/val_sweep.json --output results/gpu/phase1/val_sweep_energy/selected_schemes.json
+  -> exit 0 in 5.4 s (log: results/gpu/logs/select_energy.log)
+Sun Oct 18 08:33:02 IST 2026 group 2: validation selection for robust and k/n models
+
+[1/10] phase2/val_robust_channel: Validation sweep of robust_channel (its own oracle ranking)
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.eval_rs_uep --checkpoint results/gpu/phase2/robust_channel/adjsccq_erasure_robust.pth --data_dir ./data --split val --importance oracle,energy --schemes all --erasure_rates 0.0,0.1,0.2,0.3,0.35,0.4,0.45,0.5 --seeds 0,1,2 --output_dir results/gpu/phase2/robust_channel/val_sweep --name val_sweep --include_no_rs --max_images 5000 --oracle_ranking_file results/gpu/phase2/robust_channel/oracle_ranking.json --wandb --wandb_project rs-uep-jscc --workers 12
+  -> exit 0 in 2737.2 s (log: results/gpu/logs/val_robust_channel.log)
+
+[2/10] phase2/select_robust_channel: Select the tier allocation for robust_channel on its validation sweep
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.select_scheme --sweep results/gpu/phase2/robust_channel/val_sweep/val_sweep.json --output results/gpu/phase2/robust_channel/val_sweep/selected_schemes.json
+  -> exit 0 in 5.3 s (log: results/gpu/logs/select_robust_channel.log)
+
+[3/10] phase2/val_robust_packet: Validation sweep of robust_packet (its own oracle ranking)
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.eval_rs_uep --checkpoint results/gpu/phase2/robust_packet/adjsccq_erasure_robust.pth --data_dir ./data --split val --importance oracle,energy --schemes all --erasure_rates 0.0,0.1,0.2,0.3,0.35,0.4,0.45,0.5 --seeds 0,1,2 --output_dir results/gpu/phase2/robust_packet/val_sweep --name val_sweep --include_no_rs --max_images 5000 --oracle_ranking_file results/gpu/phase2/robust_packet/oracle_ranking.json --wandb --wandb_project rs-uep-jscc --workers 12
+  -> exit 0 in 2804.3 s (log: results/gpu/logs/val_robust_packet.log)
+
+[4/10] phase2/select_robust_packet: Select the tier allocation for robust_packet on its validation sweep
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.select_scheme --sweep results/gpu/phase2/robust_packet/val_sweep/val_sweep.json --output results/gpu/phase2/robust_packet/val_sweep/selected_schemes.json
+  -> exit 0 in 5.4 s (log: results/gpu/logs/select_robust_packet.log)
+
+[5/10] phase2/val_robust_inpaint: Validation sweep of robust_inpaint (its own oracle ranking)
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.eval_rs_uep --checkpoint results/gpu/phase2/robust_inpaint/adjsccq_erasure_robust.pth --data_dir ./data --split val --importance oracle,energy --schemes all --erasure_rates 0.0,0.1,0.2,0.3,0.35,0.4,0.45,0.5 --seeds 0,1,2 --output_dir results/gpu/phase2/robust_inpaint/val_sweep --name val_sweep --include_no_rs --max_images 5000 --oracle_ranking_file results/gpu/phase2/robust_inpaint/oracle_ranking.json --wandb --wandb_project rs-uep-jscc --workers 12
+  -> exit 0 in 3049.6 s (log: results/gpu/logs/val_robust_inpaint.log)
+
+[6/10] phase2/select_robust_inpaint: Select the tier allocation for robust_inpaint on its validation sweep
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.select_scheme --sweep results/gpu/phase2/robust_inpaint/val_sweep/val_sweep.json --output results/gpu/phase2/robust_inpaint/val_sweep/selected_schemes.json
+  -> exit 0 in 5.3 s (log: results/gpu/logs/select_robust_inpaint.log)
+
+[7/10] phase3/val_kn_1_16: Validation sweep at k/n = 0.0625
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.eval_rs_uep --checkpoint results/gpu/phase3/kn_1_16/best_val.pth --data_dir ./data --split val --importance oracle,energy --schemes all --erasure_rates 0.0,0.1,0.2,0.3,0.35,0.4,0.45,0.5 --seeds 0,1,2 --output_dir results/gpu/phase3/kn_1_16/val_sweep --name val_sweep --include_no_rs --max_images 5000 --oracle_ranking_file results/gpu/phase3/kn_1_16/oracle_ranking.json --wandb --wandb_project rs-uep-jscc --workers 12
+  -> skipped (outputs exist)
+
+[8/10] phase3/select_kn_1_16: Select the tier allocation at k/n = 0.0625
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.select_scheme --sweep results/gpu/phase3/kn_1_16/val_sweep/val_sweep.json --output results/gpu/phase3/kn_1_16/val_sweep/selected_schemes.json
+  -> skipped (outputs exist)
+
+[9/10] phase3/val_kn_1_12: Validation sweep at k/n = 0.0833
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.eval_rs_uep --checkpoint results/gpu/phase3/kn_1_12/best_val.pth --data_dir ./data --split val --importance oracle,energy --schemes all --erasure_rates 0.0,0.1,0.2,0.3,0.35,0.4,0.45,0.5 --seeds 0,1,2 --output_dir results/gpu/phase3/kn_1_12/val_sweep --name val_sweep --include_no_rs --max_images 5000 --oracle_ranking_file results/gpu/phase3/kn_1_12/oracle_ranking.json --wandb --wandb_project rs-uep-jscc --workers 12
+  -> exit 4294967295 in 628.3 s (log: results/gpu/logs/val_kn_1_12.log)
+  !! step val_kn_1_12 FAILED (exit 4294967295); continuing. Log: results/gpu/logs/val_kn_1_12.log
+
+[10/10] phase3/select_kn_1_12: Select the tier allocation at k/n = 0.0833
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.select_scheme --sweep results/gpu/phase3/kn_1_12/val_sweep/val_sweep.json --output results/gpu/phase3/kn_1_12/val_sweep/selected_schemes.json
+  -> exit 0 in 26.5 s (log: results/gpu/logs/select_kn_1_12.log)
+Sun Oct 18 11:07:24 IST 2026 group 3: FINAL test sweeps
+Mon Oct 19 00:27:16 IST 2026 group 4: Kodak, bursts, digital baseline
+
+[1/3] phase3/kodak_cifar_model: Step C.1: Kodak at 768x512 with the CIFAR-trained model
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.eval_kodak --checkpoint results/gpu/models/seed42/best_val.pth --oracle_ranking_file results/gpu/models/seed42/oracle_ranking.json --kodak_dir ./data/kodak --importance oracle,attention --seeds 0,1,2,3,4 --include_no_rs --save_images_rate 0.4 --output_dir results/gpu/phase3/kodak --wandb --wandb_project rs-uep-jscc --workers 12
+  -> exit 0 in 6260.1 s (log: results/gpu/logs/kodak_cifar_model.log)
+
+[2/3] final/burst_test: FINAL TEST burst study (Gilbert-Elliott, interleaved vs sequential)
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.eval_burst --checkpoint results/gpu/models/seed42/best_val.pth --oracle_ranking_file results/gpu/models/seed42/oracle_ranking.json --data_dir ./data --split test --avg_losses 0.35,0.45 --burst_lengths 1,2,4,8,16 --seeds 0,1,2,3,4 --include_no_rs --schemes three_tier_25_25_50,three_tier_25_50_25,two_tier_25_75,two_tier_50_50,two_tier_75_25 --output_dir results/gpu/final/burst --wandb --wandb_project rs-uep-jscc --workers 12
+  -> skipped (outputs exist)
+
+[3/3] final/digital_test: FINAL TEST digital baseline
+  C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\.venv\Scripts\python.exe -m experiments.eval_digital_baseline --data_dir ./data --split test --seeds 0,1,2,3,4 --output_dir results/gpu/final/digital --wandb --wandb_project rs-uep-jscc --workers 12
+  -> skipped (outputs exist)
+Mon Oct 19 02:11:36 IST 2026 chain finished

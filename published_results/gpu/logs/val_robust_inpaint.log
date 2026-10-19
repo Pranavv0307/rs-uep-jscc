@@ -1,0 +1,68 @@
+C:\Users\Subhash\AppData\Roaming\Python\Python314\site-packages\torchvision\datasets\cifar.py:83: VisibleDeprecationWarning: dtype(): align should be passed as Python or NumPy boolean but got `align=0`. Did you mean to pass a tuple to create a subarray type? (Deprecated NumPy 2.4)
+  entry = pickle.load(f, encoding="latin1")
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:11,  1.66it/s] 10%|█         | 2/20 [00:01<00:10,  1.73it/s] 15%|█▌        | 3/20 [00:01<00:09,  1.75it/s] 20%|██        | 4/20 [00:02<00:09,  1.77it/s] 25%|██▌       | 5/20 [00:02<00:08,  1.73it/s] 30%|███       | 6/20 [00:03<00:07,  1.90it/s] 35%|███▌      | 7/20 [00:03<00:06,  1.90it/s] 40%|████      | 8/20 [00:04<00:06,  1.85it/s] 45%|████▌     | 9/20 [00:04<00:06,  1.82it/s] 50%|█████     | 10/20 [00:05<00:05,  1.81it/s] 55%|█████▌    | 11/20 [00:06<00:04,  1.80it/s] 60%|██████    | 12/20 [00:06<00:04,  1.80it/s] 65%|██████▌   | 13/20 [00:07<00:04,  1.73it/s] 70%|███████   | 14/20 [00:07<00:03,  1.78it/s] 75%|███████▌  | 15/20 [00:08<00:02,  1.78it/s] 80%|████████  | 16/20 [00:08<00:02,  1.80it/s] 85%|████████▌ | 17/20 [00:09<00:01,  1.80it/s] 90%|█████████ | 18/20 [00:10<00:01,  1.78it/s] 95%|█████████▌| 19/20 [00:10<00:00,  1.80it/s]100%|██████████| 20/20 [00:11<00:00,  1.83it/s]100%|██████████| 20/20 [00:11<00:00,  1.80it/s]
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: vaishakprasad-bhat (vaishak-prasad-bhat) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: setting up run px6j66vm
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\wandb\run-20261018_100554-px6j66vm
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run eval-val_sweep
+wandb:  View project at https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc
+wandb:  View run at https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc/runs/px6j66vm
+5000 images (cifar10/val), 14 methods, 3 seeds x 8 rates, channels=16
+evaluating:   0%|          | 0/24 [00:00<?, ?it/s]evaluating:   4%|▍         | 1/24 [18:32<7:06:29, 1112.58s/it]evaluating:   8%|▊         | 2/24 [18:35<2:48:37, 459.89s/it] evaluating:  12%|█▎        | 3/24 [22:09<2:01:36, 347.44s/it]evaluating:  17%|█▋        | 4/24 [23:17<1:19:04, 237.24s/it]evaluating:  21%|██        | 5/24 [24:44<58:00, 183.17s/it]  evaluating:  25%|██▌       | 6/24 [24:59<37:45, 125.86s/it]evaluating:  29%|██▉       | 7/24 [25:31<26:57, 95.17s/it] evaluating:  33%|███▎      | 8/24 [28:45<33:48, 126.81s/it]evaluating:  38%|███▊      | 9/24 [32:03<37:13, 148.89s/it]evaluating:  42%|████▏     | 10/24 [32:07<24:19, 104.22s/it]evaluating:  46%|████▌     | 11/24 [32:09<15:47, 72.88s/it] evaluating:  50%|█████     | 12/24 [32:18<10:41, 53.46s/it]evaluating:  54%|█████▍    | 13/24 [42:06<39:28, 215.31s/it]evaluating:  58%|█████▊    | 14/24 [42:39<26:43, 160.35s/it]evaluating:  62%|██████▎   | 15/24 [43:50<20:00, 133.36s/it]evaluating:  67%|██████▋   | 16/24 [43:54<12:36, 94.53s/it] evaluating:  71%|███████   | 17/24 [45:00<10:00, 85.80s/it]evaluating:  75%|███████▌  | 18/24 [46:13<08:11, 81.96s/it]evaluating:  79%|███████▉  | 19/24 [48:00<07:28, 89.70s/it]evaluating:  83%|████████▎ | 20/24 [48:33<04:49, 72.44s/it]evaluating:  88%|████████▊ | 21/24 [49:13<03:08, 62.69s/it]evaluating:  92%|█████████▏| 22/24 [49:13<01:28, 44.13s/it]evaluating:  96%|█████████▌| 23/24 [49:59<00:44, 44.54s/it]evaluating: 100%|██████████| 24/24 [50:00<00:00, 31.50s/it]evaluating: 100%|██████████| 24/24 [50:02<00:00, 125.11s/it]
+wandb: uploading artifact run-px6j66vm-seed_summary; uploading artifact run-px6j66vm-paired_vs_uniform; uploading artifact val_sweep-results; updating run metadata
+wandb: uploading artifact run-px6j66vm-seed_summary; uploading artifact run-px6j66vm-paired_vs_uniform; uploading artifact val_sweep-results
+wandb: uploading artifact run-px6j66vm-seed_summary; uploading artifact run-px6j66vm-paired_vs_uniform; uploading artifact val_sweep-results; uploading history steps 23-31, summary, console lines 0-12
+wandb: uploading artifact run-px6j66vm-seed_summary; uploading artifact run-px6j66vm-paired_vs_uniform; uploading artifact val_sweep-results
+wandb: uploading artifact run-px6j66vm-seed_summary; uploading artifact run-px6j66vm-paired_vs_uniform; uploading artifact val_sweep-results; uploading media\images\figures\val_sweep_psnr_curves_26_bdf40cbab69be9ba6897.png; uploading media\images\figures\val_sweep_block_failure_28_ea5d19ba1b6d206d0cf7.png (+ 9 more)
+wandb: uploading artifact run-px6j66vm-seed_summary; uploading artifact run-px6j66vm-paired_vs_uniform; uploading artifact val_sweep-results; uploading media\images\figures\val_sweep_gain_heatmap_30_4ffb141380c974c432e6.png; uploading media\images\figures\val_sweep_psnr_cdf_r0.4_31_1237d2873fd54a1e3b20.png (+ 5 more)
+wandb: uploading artifact run-px6j66vm-seed_summary; uploading artifact run-px6j66vm-paired_vs_uniform; uploading artifact val_sweep-results; uploading media\images\figures\val_sweep_psnr_p5_curves_27_9f879d9ca1d140e909d1.png; uploading media\images\figures\val_sweep_gain_vs_uniform_29_76354642a8d0faa4e157.png (+ 1 more)
+wandb: uploading artifact run-px6j66vm-seed_summary; uploading artifact run-px6j66vm-paired_vs_uniform; uploading artifact val_sweep-results; uploading media\images\figures\val_sweep_gain_vs_uniform_29_76354642a8d0faa4e157.png
+wandb: uploading artifact run-px6j66vm-seed_summary
+wandb: uploading data
+wandb: 
+wandb: Run history:
+wandb:                       erasure_rate ▁▁█▇▂▂▇▆▄▄▅▅▁▇█▇▆▂█▇▇▄▆▅
+wandb:                      no_rs/psnr_db ██▁▂▆▆▂▃▅▅▄▄█▂▁▂▃▆▁▂▂▅▃▄
+wandb:                               seed ▅▁▁▁▅▁▁▁▅▁▁▅█▅▅▅▅███████
+wandb: three_tier_25_25_50@energy/psnr_db ██▁▂██▃▄▇▇▅▅█▃▁▂▄█▁▂▃▇▄▅
+wandb: three_tier_25_25_50@oracle/psnr_db ██▁▂██▃▄▇▇▅▅█▃▁▂▄█▁▂▃▇▄▅
+wandb: three_tier_25_50_25@energy/psnr_db ██▁▂██▃▅▇▇▆▆█▃▁▂▅█▁▂▃▇▅▆
+wandb: three_tier_25_50_25@oracle/psnr_db ██▁▂██▃▅▇▇▆▆█▃▁▂▅█▁▂▃▇▅▆
+wandb: three_tier_50_25_25@energy/psnr_db ██▁▂██▃▅██▆▆█▃▁▂▅█▁▂▃█▅▆
+wandb: three_tier_50_25_25@oracle/psnr_db ██▁▂██▃▅██▆▆█▃▁▂▅█▁▂▃█▅▆
+wandb:      two_tier_25_75@energy/psnr_db ██▁▂██▃▄██▅▅█▃▁▂▄█▁▂▃█▄▅
+wandb:                                 +6 ...
+wandb: 
+wandb: Run summary:
+wandb:                       erasure_rate 0.3
+wandb:                      no_rs/psnr_db 25.85769
+wandb:                               seed 2
+wandb: three_tier_25_25_50@energy/psnr_db 27.76755
+wandb: three_tier_25_25_50@oracle/psnr_db 27.68463
+wandb: three_tier_25_50_25@energy/psnr_db 28.48612
+wandb: three_tier_25_50_25@oracle/psnr_db 28.64187
+wandb: three_tier_50_25_25@energy/psnr_db 28.6749
+wandb: three_tier_50_25_25@oracle/psnr_db 28.72538
+wandb:      two_tier_25_75@energy/psnr_db 27.53863
+wandb:                                 +6 ...
+wandb: 
+wandb:  View run eval-val_sweep at: https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc/runs/px6j66vm
+wandb:  View project at: https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc
+wandb: Synced 5 W&B file(s), 8 media file(s), 7 artifact file(s) and 0 other file(s)
+wandb: Find logs at: .\wandb\run-20261018_100554-px6j66vm\logs
+- Based on 3 channel seed(s); 5000 images per seed. All gains below are paired per seed against the baseline (same packet losses), so they carry no luck-of-the-draw advantage.
+- Break-even: the best protected method overtakes `uniform` from about erasure_rate = 0.32.
+- Low-loss penalty: even the best method is 0.38 dB below `uniform` at erasure_rate = 0.3 (two_tier_50_50@energy). This is the block-length effect of a single large RS block, which tiered coding gives up.
+- Peak gain: +1.21 dB at erasure_rate = 0.45 by three_tier_25_25_50@energy (95% CI ±0.01, significant).
+- Importance sources ranked by their best scheme's mean gain over erasure_rate >= 0.35: energy +0.89 dB, oracle +0.87 dB.
+- Share of the reference ranking's gain captured: energy 102%. A share above 100% means that source allocated protection better than the reference.
+- Worst-case images at erasure_rate = 0.4: 5th-percentile PSNR 22.25 dB (three_tier_25_50_25@energy) vs 20.98 dB (uniform).
+- Worst-case images at erasure_rate = 0.5: 5th-percentile PSNR 20.08 dB (three_tier_25_25_50@energy) vs 19.59 dB (uniform).
+- Seed sensitivity: std across channel seeds stays below 0.3 dB everywhere.
+- `uniform` shows its steepest fall (-2.14 dB) between erasure_rate = 0.3 and 0.35 -- its cliff.
+saved: results/gpu/phase2/robust_inpaint/val_sweep\val_sweep.json
+       results/gpu/phase2/robust_inpaint/val_sweep\val_sweep.md
