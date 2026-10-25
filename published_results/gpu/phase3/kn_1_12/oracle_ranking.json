@@ -1,0 +1,57 @@
+{
+  "checkpoint": "results/phase3/kn_1_12/best_val.pth",
+  "source_split": "train",
+  "split": {
+    "seed": 42,
+    "model_seed": 42,
+    "train_images": 40000,
+    "validation_images": 10000,
+    "test_images": 10000,
+    "test_split_untouched_until_final_evaluation": true
+  },
+  "method": "oracle_leave_one_channel_out",
+  "score_definition": "mean clean PSNR minus mean PSNR after zeroing one latent channel",
+  "ranking_channels_most_to_least_important": [
+    1,
+    7,
+    4,
+    3,
+    2,
+    6,
+    5,
+    0
+  ],
+  "psnr_drop_db_by_channel": [
+    3.8963538215637206,
+    10.932412840270995,
+    5.2573556694030765,
+    9.533351083374024,
+    9.580223286437988,
+    4.641969688415528,
+    5.242963487243652,
+    10.708414282226563
+  ],
+  "mse_increase_by_channel": [
+    0.001575944197177887,
+    0.013453193090856075,
+    0.0025616081707179545,
+    0.008968389320373535,
+    0.008822320485115052,
+    0.002057926801033318,
+    0.002637577211484313,
+    0.012394064047932625
+  ],
+  "ssim_drop_by_channel": [
+    0.04274055803418159,
+    0.17775546760559083,
+    0.0638878312945366,
+    0.12020259110927582,
+    0.12370323668718337,
+    0.055586990863084794,
+    0.060397400933504104,
+    0.11767671936750412
+  ],
+  "num_images": 40000,
+  "channel_count": 8,
+  "latent_channel_width": 64
+}

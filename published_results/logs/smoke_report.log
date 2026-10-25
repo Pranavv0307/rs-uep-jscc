@@ -1,0 +1,26 @@
+## Main erasure sweep
+- Based on 2 channel seed(s); 200 images per seed. All gains below are paired per seed against the baseline (same packet losses), so they carry no luck-of-the-draw advantage.
+- No low-loss penalty: the best method is never more than 0.05 dB below `uniform` at any erasure_rate in this sweep.
+- Peak gain: +2.27 dB at erasure_rate = 0.4 by three_tier_25_50_25@oracle (95% CI ±1.53, significant).
+- Importance sources ranked by their best scheme's mean gain over erasure_rate >= 0.35: oracle +1.82 dB, attention +1.22 dB.
+- Share of the oracle gain captured: attention 67%.
+- Worst-case images at erasure_rate = 0.4: 5th-percentile PSNR 18.25 dB (three_tier_25_50_25@oracle) vs 16.91 dB (uniform).
+- Worst-case images at erasure_rate = 0.5: 5th-percentile PSNR 15.98 dB (three_tier_25_50_25@oracle) vs 15.85 dB (uniform).
+- Seed sensitivity: largest std across channel seeds is 0.41 dB (three_tier_25_50_25@oracle, erasure_rate = 0.4); gains smaller than that are not reliable.
+- `uniform` shows its steepest fall (-10.04 dB) between erasure_rate = 0 and 0.4 -- its cliff.
+## Model comparison (low-loss penalty, peak gain)
+- base: worst best-method gain +0.00 dB, peak gain +2.27 dB, break-even at loss 0.00.
+## Digital separation baseline
+- Clean: jpeg+rs 36.80 dB vs attention UEP (three_tier_25_50_25) 30.98 dB.
+- jpeg+rs falls below attention UEP (three_tier_25_50_25) from loss = 0.4.
+- Clean: jpeg2000+rs 32.62 dB vs attention UEP (three_tier_25_50_25) 30.98 dB.
+- jpeg2000+rs falls below attention UEP (three_tier_25_50_25) from loss = 0.4.
+- Clean: webp+rs 38.28 dB vs attention UEP (three_tier_25_50_25) 30.98 dB.
+- webp+rs falls below attention UEP (three_tier_25_50_25) from loss = 0.4.
+## multiseed
+- Most damaging channel per model: seed42 12.2 dB (channel 10), smoke7 2.0 dB (channel 7).
+- Index-aligned Spearman between models averages +0.01: channel labels do permute between initialisations, as expected.
+- Sorted damage profiles agree: mean Pearson 0.952, mean absolute difference 3.57 dB per channel.
+- NOT every model has a >10 dB channel: the 'one catastrophic channel' claim needs softening.
+- Share of total damage carried by the top-4 channels: seed42 49%, smoke7 61%.
+figures: 8 files in results/smoke_report

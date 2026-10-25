@@ -1,0 +1,18 @@
+{
+  "id": "vaishakprasadbhat/rs-uep-jscc-eval-seed7-cpu",
+  "title": "rs-uep-jscc-eval-seed7-cpu",
+  "code_file": "run.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "false",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": [
+    "pankrzysiu/cifar10-python",
+    "vaishakprasadbhat/rs-uep-jscc-models"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

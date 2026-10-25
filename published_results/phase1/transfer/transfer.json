@@ -1,0 +1,88 @@
+{
+  "metadata": {
+    "git_commit": "ee88d040a66de70635dd5354e65e4d0fb8518160",
+    "git_branch": "phase0-5-pipeline",
+    "dirty_repo": true,
+    "timestamp_utc": "2026-10-17T19:08:00+00:00",
+    "python_version": "3.14.0",
+    "torch_version": "2.10.0+cpu",
+    "numpy_version": "2.4.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "device": null,
+    "device_name": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "cuda_version": null,
+    "cudnn_version": null,
+    "dataset": "CIFAR-10",
+    "split": {
+      "reference": "cifar10/val",
+      "targets": [
+        "cifar100"
+      ]
+    },
+    "global_seed": 42,
+    "determinism": {
+      "cudnn_deterministic": true,
+      "cudnn_benchmark": false,
+      "deterministic_algorithms": true
+    },
+    "command_line": "C:\\Users\\Subhash\\Documents\\vaisakkkkkkkkkkk\\rs-uep-jscc\\experiments\\transfer_sensitivity.py --checkpoint results/local_models/seed42/best_val.pth --reference_ranking results/local_models/seed42/oracle_ranking.json --targets cifar100 --data_dir ./data --output_dir results/phase1/transfer --wandb --wandb_project rs-uep-jscc",
+    "args": {
+      "checkpoint": "results/local_models/seed42/best_val.pth",
+      "reference_ranking": "results/local_models/seed42/oracle_ranking.json",
+      "targets": "cifar100",
+      "data_dir": "./data",
+      "max_images": 2000,
+      "batch_size": 250,
+      "n_boot": 500,
+      "global_seed": 42,
+      "output_dir": "results/phase1/transfer",
+      "wandb": true,
+      "wandb_project": "rs-uep-jscc"
+    },
+    "checkpoint": {
+      "path": "results/local_models/seed42/best_val.pth",
+      "sha256": "35ee3f09d6643f527e65ed6ffda70037ea761d049d089cd321308835abe9c09f"
+    },
+    "files": {
+      "reference_ranking": {
+        "path": "results/local_models/seed42/oracle_ranking.json",
+        "sha256": "cb80537d5eb7b3a05686fd779d190b13b33717e729d127d4a51df98554b06293"
+      }
+    }
+  },
+  "results": {
+    "cifar100": {
+      "spearman": 0.9882352941176471,
+      "spearman_ci95": [
+        0.9794117647058823,
+        0.9941176470588236
+      ],
+      "pearson": 0.9989269403370312,
+      "kendall": 0.95,
+      "top4_overlap": 0.75,
+      "top4_reference": [
+        3,
+        5,
+        10,
+        12
+      ],
+      "top4_target": [
+        3,
+        5,
+        7,
+        12
+      ],
+      "worst_channel_reference": 12,
+      "worst_channel_target": 12,
+      "train_ranking_top4": [
+        3,
+        5,
+        10,
+        12
+      ],
+      "train_ranking_vs_target_spearman": 0.9852941176470589,
+      "decision": "STATIC: ranking transfers; hard-code the table (0 B side information).",
+      "clean_damage_mean_db": 3.4956400394439697
+    }
+  }
+}

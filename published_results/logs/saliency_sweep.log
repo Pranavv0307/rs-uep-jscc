@@ -1,0 +1,69 @@
+C:\Users\Subhash\AppData\Roaming\Python\Python314\site-packages\torchvision\datasets\cifar.py:83: VisibleDeprecationWarning: dtype(): align should be passed as Python or NumPy boolean but got `align=0`. Did you mean to pass a tuple to create a subarray type? (Deprecated NumPy 2.4)
+  entry = pickle.load(f, encoding="latin1")
+  0%|          | 0/40 [00:00<?, ?it/s]  2%|▎         | 1/40 [00:01<00:58,  1.51s/it]  5%|▌         | 2/40 [00:02<00:48,  1.28s/it]  8%|▊         | 3/40 [00:03<00:47,  1.30s/it] 10%|█         | 4/40 [00:05<00:44,  1.23s/it] 12%|█▎        | 5/40 [00:06<00:43,  1.24s/it] 15%|█▌        | 6/40 [00:07<00:41,  1.23s/it] 18%|█▊        | 7/40 [00:08<00:40,  1.23s/it] 20%|██        | 8/40 [00:09<00:38,  1.19s/it] 22%|██▎       | 9/40 [00:11<00:37,  1.20s/it] 25%|██▌       | 10/40 [00:12<00:36,  1.21s/it] 28%|██▊       | 11/40 [00:13<00:34,  1.21s/it] 30%|███       | 12/40 [00:14<00:33,  1.20s/it] 32%|███▎      | 13/40 [00:15<00:32,  1.22s/it] 35%|███▌      | 14/40 [00:17<00:31,  1.21s/it] 38%|███▊      | 15/40 [00:18<00:30,  1.21s/it] 40%|████      | 16/40 [00:19<00:28,  1.19s/it] 42%|████▎     | 17/40 [00:20<00:28,  1.22s/it] 45%|████▌     | 18/40 [00:22<00:26,  1.22s/it] 48%|████▊     | 19/40 [00:23<00:25,  1.22s/it] 50%|█████     | 20/40 [00:24<00:24,  1.22s/it] 52%|█████▎    | 21/40 [00:25<00:22,  1.20s/it] 55%|█████▌    | 22/40 [00:26<00:21,  1.20s/it] 57%|█████▊    | 23/40 [00:27<00:20,  1.18s/it] 60%|██████    | 24/40 [00:29<00:19,  1.20s/it] 62%|██████▎   | 25/40 [00:30<00:17,  1.18s/it] 65%|██████▌   | 26/40 [00:31<00:16,  1.21s/it] 68%|██████▊   | 27/40 [00:32<00:15,  1.18s/it] 70%|███████   | 28/40 [00:33<00:14,  1.21s/it] 72%|███████▎  | 29/40 [00:35<00:12,  1.18s/it] 75%|███████▌  | 30/40 [00:36<00:11,  1.18s/it] 78%|███████▊  | 31/40 [00:37<00:10,  1.18s/it] 80%|████████  | 32/40 [00:38<00:09,  1.19s/it] 82%|████████▎ | 33/40 [00:39<00:08,  1.18s/it] 85%|████████▌ | 34/40 [00:41<00:07,  1.20s/it] 88%|████████▊ | 35/40 [00:42<00:06,  1.20s/it] 90%|█████████ | 36/40 [00:43<00:04,  1.23s/it] 92%|█████████▎| 37/40 [00:44<00:03,  1.28s/it] 95%|█████████▌| 38/40 [00:46<00:02,  1.29s/it] 98%|█████████▊| 39/40 [00:47<00:01,  1.30s/it]100%|██████████| 40/40 [00:48<00:00,  1.26s/it]100%|██████████| 40/40 [00:48<00:00,  1.22s/it]
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: vaishakprasad-bhat (vaishak-prasad-bhat) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: setting up run fin8b3rj
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in C:\Users\Subhash\Documents\vaisakkkkkkkkkkk\rs-uep-jscc\wandb\run-20261018_004612-fin8b3rj
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run eval-saliency_sweep
+wandb:  View project at https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc
+wandb:  View run at https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc/runs/fin8b3rj
+10000 images (cifar10/val), 11 methods, 5 seeds x 3 rates, channels=16
+evaluating:   0%|          | 0/15 [00:00<?, ?it/s]evaluating:   7%|▋         | 1/15 [28:34<6:40:00, 1714.35s/it]evaluating:  13%|█▎        | 2/15 [28:36<2:33:16, 707.43s/it] evaluating:  20%|██        | 3/15 [28:41<1:17:20, 386.70s/it]evaluating:  27%|██▋       | 4/15 [28:42<42:57, 234.31s/it]  evaluating:  33%|███▎      | 5/15 [33:24<41:56, 251.60s/it]evaluating:  40%|████      | 6/15 [33:27<25:03, 167.03s/it]evaluating:  47%|████▋     | 7/15 [33:29<15:03, 112.90s/it]evaluating:  53%|█████▎    | 8/15 [33:29<09:00, 77.17s/it] evaluating:  60%|██████    | 9/15 [37:38<13:05, 130.86s/it]evaluating:  67%|██████▋   | 10/15 [38:00<08:06, 97.21s/it]evaluating:  73%|███████▎  | 11/15 [38:04<04:34, 68.68s/it]evaluating:  80%|████████  | 12/15 [38:05<02:24, 48.03s/it]evaluating:  87%|████████▋ | 13/15 [42:36<03:51, 115.67s/it]evaluating:  93%|█████████▎| 14/15 [44:06<01:47, 107.75s/it]evaluating: 100%|██████████| 15/15 [45:59<00:00, 109.45s/it]evaluating: 100%|██████████| 15/15 [46:01<00:00, 184.12s/it]
+wandb: uploading artifact run-fin8b3rj-seed_summary; uploading artifact run-fin8b3rj-paired_vs_uniform; uploading artifact saliency_sweep-results; updating run metadata
+wandb: uploading artifact run-fin8b3rj-seed_summary; uploading artifact run-fin8b3rj-paired_vs_uniform; uploading artifact saliency_sweep-results
+wandb: uploading artifact run-fin8b3rj-seed_summary; uploading artifact run-fin8b3rj-paired_vs_uniform; uploading artifact saliency_sweep-results; uploading history steps 15-22, summary, console lines 0-13
+wandb: uploading artifact run-fin8b3rj-seed_summary; uploading artifact run-fin8b3rj-paired_vs_uniform; uploading artifact saliency_sweep-results
+wandb: uploading artifact run-fin8b3rj-paired_vs_uniform; uploading artifact saliency_sweep-results
+wandb: uploading artifact saliency_sweep-results
+wandb: uploading artifact saliency_sweep-results; uploading media\table\paired_vs_uniform_16_34e394ccb4fba23aff65.table.json; uploading media\images\figures\saliency_sweep_psnr_cdf_r0.4_22_66d5649ee19fe80cbe22.png; uploading output.log; uploading config.yaml (+ 6 more)
+wandb: uploading artifact saliency_sweep-results; uploading media\images\figures\saliency_sweep_psnr_cdf_r0.4_22_66d5649ee19fe80cbe22.png; uploading media\images\figures\saliency_sweep_psnr_curves_17_2ff37eaf7b6c13be9450.png; uploading media\images\figures\saliency_sweep_psnr_p5_curves_18_9920d0616b3fa447998d.png; uploading media\images\figures\saliency_sweep_block_failure_19_004a30fd1380d8b3114b.png (+ 2 more)
+wandb: uploading media\images\figures\saliency_sweep_gain_vs_uniform_20_89a1a9b6c9e1b50bcd87.png
+wandb: uploading data
+wandb: 
+wandb: Run history:
+wandb:                                erasure_rate ████▅▅▅▅▁▁▁▁█▅▁
+wandb:                               no_rs/psnr_db ▁▁▁▁▄▄▄▄████▁▄█
+wandb:                                        seed ▁▆▅▃▅▁▆▃▃▆▁▅███
+wandb:       three_tier_25_50_25@attention/psnr_db ▁▁▁▁▄▄▄▄████▁▄█
+wandb:          three_tier_25_50_25@energy/psnr_db ▁▁▁▁▄▄▄▄████▁▄█
+wandb:              three_tier_25_50_25@l1/psnr_db ▁▁▁▁▄▄▄▄████▁▄█
+wandb:          three_tier_25_50_25@oracle/psnr_db ▁▁▁▁▄▄▄▄████▁▄█
+wandb: three_tier_25_50_25@oracle_perimage/psnr_db ▁▁▁▁▄▄▄▄████▁▄█
+wandb:       three_tier_25_50_25@predicted/psnr_db ▁▁▁▁▄▄▄▄████▁▄█
+wandb:          three_tier_25_50_25@random/psnr_db ▁▁▁▁▄▄▄▄████▁▄█
+wandb:                                          +3 ...
+wandb: 
+wandb: Run summary:
+wandb:                                erasure_rate 0.3
+wandb:                               no_rs/psnr_db 21.69141
+wandb:                                        seed 4
+wandb:       three_tier_25_50_25@attention/psnr_db 25.64348
+wandb:          three_tier_25_50_25@energy/psnr_db 27.01815
+wandb:              three_tier_25_50_25@l1/psnr_db 26.97966
+wandb:          three_tier_25_50_25@oracle/psnr_db 26.60804
+wandb: three_tier_25_50_25@oracle_perimage/psnr_db 27.04299
+wandb:       three_tier_25_50_25@predicted/psnr_db 26.9021
+wandb:          three_tier_25_50_25@random/psnr_db 25.50767
+wandb:                                          +3 ...
+wandb: 
+wandb:  View run eval-saliency_sweep at: https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc/runs/fin8b3rj
+wandb:  View project at: https://wandb.ai/vaishak-prasad-bhat/rs-uep-jscc
+wandb: Synced 5 W&B file(s), 8 media file(s), 7 artifact file(s) and 0 other file(s)
+wandb: Find logs at: .\wandb\run-20261018_004612-fin8b3rj\logs
+- Based on 5 channel seed(s); 10000 images per seed. All gains below are paired per seed against the baseline (same packet losses), so they carry no luck-of-the-draw advantage.
+- Break-even: the best protected method overtakes `uniform` from about erasure_rate = 0.34.
+- Low-loss penalty: even the best method is 1.45 dB below `uniform` at erasure_rate = 0.3 (three_tier_25_50_25@oracle_perimage). This is the block-length effect of a single large RS block, which tiered coding gives up.
+- Peak gain: +1.94 dB at erasure_rate = 0.4 by three_tier_25_50_25@energy (95% CI ±0.02, significant).
+- Importance sources ranked by their best scheme's mean gain over erasure_rate >= 0.35: energy +1.61 dB, l1 +1.57 dB, oracle_perimage +1.50 dB, predicted +1.40 dB, taylor +1.31 dB, variance +1.09 dB, oracle +0.94 dB, attention +0.89 dB, random +0.80 dB.
+- Share of the oracle gain captured: energy 170%, l1 167%, predicted 148%, taylor 139%, variance 116%, attention 94%, random 85%.
+- Random-order control gains +0.80 dB versus oracle +0.94 dB, so the benefit comes from *which* channels are protected, not merely from tiering.
+- Worst-case images at erasure_rate = 0.4: 5th-percentile PSNR 18.78 dB (three_tier_25_50_25@energy) vs 17.26 dB (uniform).
+- Worst-case images at erasure_rate = 0.5: 5th-percentile PSNR 16.51 dB (three_tier_25_50_25@energy) vs 15.93 dB (uniform).
+- Seed sensitivity: std across channel seeds stays below 0.3 dB everywhere.
+- `uniform` shows its steepest fall (-7.26 dB) between erasure_rate = 0.3 and 0.4 -- its cliff.
+saved: results/phase1/saliency_sweep\saliency_sweep.json
+       results/phase1/saliency_sweep\saliency_sweep.md

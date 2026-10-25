@@ -1,0 +1,154 @@
+{
+  "metadata": {
+    "git_commit": "17883e13462fecfa2811ab2a141d152dd224c0b2",
+    "git_branch": "phase0-5-pipeline",
+    "dirty_repo": false,
+    "timestamp_utc": "2026-10-17T18:28:56+00:00",
+    "python_version": "3.13.15",
+    "torch_version": "2.11.0+cpu",
+    "numpy_version": "2.1.3",
+    "platform": "Linux-6.18.48+-x86_64-with-glibc2.39",
+    "device": "cpu",
+    "device_name": "x86_64",
+    "cuda_version": null,
+    "cudnn_version": null,
+    "dataset": "CIFAR-10",
+    "split": {
+      "seed": 42,
+      "model_seed": 42,
+      "train_images": 40000,
+      "validation_images": 10000,
+      "test_images": 10000,
+      "test_split_untouched_until_final_evaluation": true
+    },
+    "global_seed": 42,
+    "determinism": {
+      "cudnn_deterministic": true,
+      "cudnn_benchmark": false,
+      "deterministic_algorithms": true
+    },
+    "command_line": "/tmp/repo/experiments/train_adjsccq_train_split.py --seed 42 --split_seed 42 --skip_rs_sweep --data_dir ./data --output_dir results/phase3/kn_1_16 --wandb --wandb_project rs-uep-jscc --wandb_name kaggle-phase3-kn_1_16 --k_over_n 0.0625",
+    "args": null,
+    "checkpoint": {
+      "path": "results/phase3/kn_1_16/best_val.pth",
+      "sha256": "daede13ad882fdbdc9eb7c38f0e076664ed39024206a5be9c897d70daf98f6e4"
+    },
+    "files": {
+      "oracle_ranking": {
+        "path": "results/phase3/kn_1_16/oracle_ranking.json",
+        "sha256": "b0938c674468de981ba1f1f18588dbea3ccb2f55999b90ad3ffaffc9705ad2c5"
+      },
+      "config": {
+        "path": "configs/adjsccq_identity_train.yaml",
+        "sha256": "2df702e67fa8ed91cd026ab96fe0a58603defb6f3ffec8f89151e49e76647426"
+      }
+    },
+    "model_seed": 42,
+    "split_seed": 42,
+    "k_over_n": 0.0625,
+    "channels": 6,
+    "rs_sweep_skipped": true,
+    "channel_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "erasure_rates": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.35,
+      0.4,
+      0.45,
+      0.5
+    ],
+    "oracle_source_split": "train",
+    "side_info_rule": "0 B for uniform/no_rs (no sorting), 16 B/img for sorted schemes",
+    "mask_protocol": "one master 96-packet mask per (batch, seed, rate), shared by all schemes and both importance methods"
+  },
+  "rs_uep_test_seed_summary": [],
+  "rs_uep_validation_seed_summary": [],
+  "checkpoint_best": "results/phase3/kn_1_16/best_val.pth",
+  "checkpoint_final": "results/phase3/kn_1_16/final.pth",
+  "oracle_ranking": "results/phase3/kn_1_16/oracle_ranking.json",
+  "best_epoch": 60,
+  "split": {
+    "seed": 42,
+    "model_seed": 42,
+    "train_images": 40000,
+    "validation_images": 10000,
+    "test_images": 10000,
+    "test_split_untouched_until_final_evaluation": true
+  },
+  "clean_train": {
+    "num_images": 40000,
+    "mse": 0.0017089881206552187,
+    "psnr_db_mean_per_image": 28.327854852294923,
+    "psnr_db_from_dataset_mse": 27.67261028289795,
+    "ssim_mean": 0.9355060002326966,
+    "codebook_levels_used": 251,
+    "codebook_levels_total": 256
+  },
+  "clean_validation": {
+    "num_images": 10000,
+    "mse": 0.0017368476239343483,
+    "psnr_db_mean_per_image": 28.2732765625,
+    "psnr_db_from_dataset_mse": 27.602381706237793,
+    "ssim_mean": 0.9346581479072571,
+    "codebook_levels_used": 239,
+    "codebook_levels_total": 256
+  },
+  "clean_test": {
+    "num_images": 10000,
+    "mse": 0.0017182740877072016,
+    "psnr_db_mean_per_image": 28.313368701171875,
+    "psnr_db_from_dataset_mse": 27.649075984954834,
+    "ssim_mean": 0.9353916717529297,
+    "codebook_levels_used": 240,
+    "codebook_levels_total": 256
+  },
+  "oracle": {
+    "method": "oracle_leave_one_channel_out",
+    "score_definition": "mean clean PSNR minus mean PSNR after zeroing one latent channel",
+    "ranking_channels_most_to_least_important": [
+      0,
+      4,
+      5,
+      3,
+      2,
+      1
+    ],
+    "psnr_drop_db_by_channel": [
+      10.483736039733886,
+      5.315112936401367,
+      5.771890252685547,
+      5.932827561187744,
+      9.643848887634277,
+      8.86757603149414
+    ],
+    "mse_increase_by_channel": [
+      0.01809416611343622,
+      0.003919060483574867,
+      0.0045107079960405826,
+      0.004689122706651687,
+      0.013898062497377395,
+      0.012375091010332108
+    ],
+    "ssim_drop_by_channel": [
+      0.19755880632400513,
+      0.08137236706018448,
+      0.08969801170825958,
+      0.0937969128370285,
+      0.12876310530900956,
+      0.1583115056872368
+    ],
+    "num_images": 40000,
+    "channel_count": 6,
+    "latent_channel_width": 64
+  },
+  "rs_uep_validation": [],
+  "rs_uep_test": []
+}

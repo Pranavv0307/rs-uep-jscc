@@ -1,0 +1,127 @@
+{
+  "metadata": {
+    "git_commit": "19b8298bbce83bcd17a0c403d75be4a229a1160d",
+    "git_branch": "phase0-5-pipeline",
+    "dirty_repo": true,
+    "timestamp_utc": "2026-10-17T23:54:52+00:00",
+    "python_version": "3.14.0",
+    "torch_version": "2.10.0+cpu",
+    "numpy_version": "2.4.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "device": null,
+    "device_name": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+    "cuda_version": null,
+    "cudnn_version": null,
+    "dataset": "CIFAR-10",
+    "split": {
+      "dataset": "cifar10",
+      "split": "val"
+    },
+    "global_seed": 42,
+    "determinism": {
+      "cudnn_deterministic": true,
+      "cudnn_benchmark": false,
+      "deterministic_algorithms": true
+    },
+    "command_line": "C:\\Users\\Subhash\\Documents\\vaisakkkkkkkkkkk\\rs-uep-jscc\\experiments\\feature_saliency.py --checkpoint results/gpu/models/seed42/best_val.pth --reference_ranking results/gpu/models/seed42/oracle_ranking.json --data_dir ./data --output_dir results/gpu/phase1/saliency --wandb --wandb_project rs-uep-jscc",
+    "args": {
+      "checkpoint": "results/gpu/models/seed42/best_val.pth",
+      "reference_ranking": "results/gpu/models/seed42/oracle_ranking.json",
+      "data_dir": "./data",
+      "split": "val",
+      "max_images": 2000,
+      "batch_size": 250,
+      "global_seed": 42,
+      "output_dir": "results/gpu/phase1/saliency",
+      "wandb": true,
+      "wandb_project": "rs-uep-jscc"
+    },
+    "checkpoint": {
+      "path": "results/gpu/models/seed42/best_val.pth",
+      "sha256": "2d3b1616950625f1a7c63ab89eeafcdc5241d3c881700b008d091acc96e0b343"
+    },
+    "files": {
+      "reference_ranking": {
+        "path": "results/gpu/models/seed42/oracle_ranking.json",
+        "sha256": "ee29991ce5775eefb1052d44b567858e7d57655397a5d8ace5fd00a2f0eb1623"
+      }
+    }
+  },
+  "stats": {
+    "attention": {
+      "within_image_spearman": -0.015279411764705882,
+      "ci95": [
+        -0.019545073529411764,
+        -0.010888051470588241
+      ],
+      "top1_hit_rate": 0.0,
+      "top4_overlap": 0.23,
+      "verdict": "no better than chance"
+    },
+    "energy": {
+      "within_image_spearman": 0.8428544117647059,
+      "ci95": [
+        0.8391772426470588,
+        0.8461468014705882
+      ],
+      "top1_hit_rate": 0.403,
+      "top4_overlap": 0.672875,
+      "verdict": "useful"
+    },
+    "variance": {
+      "within_image_spearman": 0.4381308823529412,
+      "ci95": [
+        0.43211422794117643,
+        0.445005
+      ],
+      "top1_hit_rate": 0.0725,
+      "top4_overlap": 0.455,
+      "verdict": "weak"
+    },
+    "l1": {
+      "within_image_spearman": 0.8399794117647059,
+      "ci95": [
+        0.83584375,
+        0.8433443749999999
+      ],
+      "top1_hit_rate": 0.451,
+      "top4_overlap": 0.677375,
+      "verdict": "useful"
+    },
+    "taylor": {
+      "within_image_spearman": 0.6261014705882353,
+      "ci95": [
+        0.6188768014705882,
+        0.634322536764706
+      ],
+      "top1_hit_rate": 0.314,
+      "top4_overlap": 0.637375,
+      "verdict": "useful"
+    },
+    "random": {
+      "within_image_spearman": 0.002286764705882353,
+      "ci95": [
+        -0.00802172794117647,
+        0.01338268382352941
+      ],
+      "top1_hit_rate": 0.0645,
+      "top4_overlap": 0.249375,
+      "verdict": "no better than chance"
+    },
+    "static_train_ranking": {
+      "within_image_spearman": 0.8931029411764706,
+      "ci95": [
+        0.8898254411764706,
+        0.8960897794117646
+      ],
+      "top1_hit_rate": 0.4565,
+      "top4_overlap": 0.88275,
+      "verdict": "useful"
+    }
+  },
+  "insights": [
+    "Proxies ranked by within-image Spearman with the true damage: static_train_ranking +0.89, energy +0.84, l1 +0.84, taylor +0.63, variance +0.44, random +0.00, attention -0.02.",
+    "Static train ranking reaches +0.89: how much of the per-image structure a single global table already explains.",
+    "Best proxy beyond the static table: energy (top-4 overlap 0.68 vs chance 0.25)."
+  ]
+}
