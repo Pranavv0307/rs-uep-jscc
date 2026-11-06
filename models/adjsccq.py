@@ -80,6 +80,10 @@ class ADJSCCQEncoder(nn.Module):
     stack is untouched and imported directly from models/adjscc.py, so
     this file cannot silently drift from that already-tested backbone."""
 
+    # G0 (model-agnostic interface, see models/registry.py): this model has a
+    # bottleneck attention gate, so the ``attention`` importance source exists.
+    has_attention = True
+
     def __init__(self, k_over_n: float = 1 / 6, image_size: int = 32,
                  num_levels: int = 256, init_range: tuple = (-3.0, 3.0),
                  init_sigma: float = 1.0):
@@ -89,6 +93,11 @@ class ADJSCCQEncoder(nn.Module):
         self.quantizer = ScalarSoftToHardQuantizer(
             num_levels=num_levels, init_range=init_range, init_sigma=init_sigma
         )
+
+    @property
+    def num_channels(self) -> int:
+        """Latent channels (16 at k/n = 1/6). Read-only; adds nothing to the state dict."""
+        return self.encoder.af5.num_channels
 
     @torch.no_grad()
     def calibrate_quantizer(self, x: torch.Tensor, snr_db=NOMINAL_SNR_DB_IDENTITY,

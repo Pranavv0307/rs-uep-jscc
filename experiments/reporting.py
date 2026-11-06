@@ -39,7 +39,9 @@ def summary_markdown(summary: Sequence[dict], metadata: Optional[dict] = None, x
             if key not in ("oracle_ranking",) and not isinstance(value, (dict, list)) or key in ("channel_seeds",):
                 lines.append(f"- {key}: {value}")
         lines.append("- PSNR: mean ± sample std over channel seeds (95% t-interval half-width in brackets)\n")
-    header = ["Method", x_key, "PSNR (dB)", "median", "p5", "SSIM", "block-fail", "Coding OH", "Side-info B", "Total OH"]
+    speech = any("si_sdr_db_mean__mean" in row for row in summary)  # S1 rows: SNR in psnr_* fields, SI-SDR not SSIM
+    header = ["Method", x_key, "SNR (dB)" if speech else "PSNR (dB)", "median", "p5",
+              "SI-SDR (dB)" if speech else "SSIM", "block-fail", "Coding OH", "Side-info B", "Total OH"]
     header += list(extra_keys)
     lines.append("| " + " | ".join(header) + " |")
     lines.append("|" + "---|" * len(header))
@@ -50,7 +52,8 @@ def summary_markdown(summary: Sequence[dict], metadata: Optional[dict] = None, x
                 row.get("psnr_db_mean_per_image__ci95_half_width")),
             f"{row.get('psnr_db_median__mean', float('nan')):.2f}",
             f"{row.get('psnr_db_p5__mean', float('nan')):.2f}",
-            f"{row.get('ssim_mean__mean', float('nan')):.4f}",
+            (f"{row.get('si_sdr_db_mean__mean', float('nan')):.2f}" if speech
+             else f"{row.get('ssim_mean__mean', float('nan')):.4f}"),
             f"{row.get('any_block_failure_rate__mean', float('nan')):.3f}",
             f"{row['coding_overhead_fraction'] * 100:.2f}%",
             str(row["side_info_bytes_per_image"]),

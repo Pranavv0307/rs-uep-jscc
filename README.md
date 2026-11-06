@@ -27,6 +27,8 @@ checkpoints under 3 MB, logs, manifest with SHA-256); datasets, per-image arrays
 | Phase 3: Kodak 768x512 (C.1) and bandwidth-ratio sweep (C.2) | Done; one k/n model did not converge |
 | Phase 4: Gilbert-Elliott bursts (D.1) and codec + RS baseline (D.2) | Done |
 | Phase 5: figures, headline table, auto-generated insights, orchestrator | Done: [`published_results/gpu/report/`](published_results/gpu/report/) |
+| G0/G1: model-agnostic pipeline + DeepJSCC-Q attention ablation (is UEP an ADJSCC effect?) | Code written, **not run**: [`G1_RUNBOOK_MAC.md`](documentations/G1_RUNBOOK_MAC.md), [`ARCHITECTURE_DECISIONS.md`](documentations/ARCHITECTURE_DECISIONS.md) |
+| S1: speech (LibriSpeech, 1-D models with/without attention, same 1024-byte latent) | Code written, **not run**: [`SPEECH_RUNBOOK_MAC.md`](documentations/SPEECH_RUNBOOK_MAC.md) |
 | Manuscript | Not started |
 
 Headline results (CIFAR-10 test, 10,000 images x 5 channel seeds, gains are paired differences to equal-protection RS, 95% CI

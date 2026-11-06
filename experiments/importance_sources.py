@@ -7,7 +7,7 @@ important). The same sources feed the erasure sweeps, the proxy-quality study
 =====================  =====================================================  ==========================
 source                 definition                                             needs at the transmitter
 =====================  =====================================================  ==========================
-``attention``          ADJSCC bottleneck gate (per image)                     encoder only
+``attention``          ADJSCC bottleneck gate (per image; ADJSCC-Q only)      encoder only
 ``energy``             mean z^2 per channel                                   latent only
 ``variance``           variance of z per channel                              latent only
 ``l1``                 mean |z| per channel = (1/2) mean |d||z||^2 / dz|      latent only
@@ -29,6 +29,7 @@ from typing import Dict, Optional, Sequence
 
 import torch
 
+from experiments.metrics import per_item_mse
 from experiments.model_io import ModelBundle, encode_full
 from experiments.sensitivity import loo_damage_batch
 
@@ -50,7 +51,7 @@ def taylor_scores(bundle: ModelBundle, z_q: torch.Tensor, x: torch.Tensor, snr_d
             recon = bundle.decoder(latent, snr_db)
         else:
             recon = bundle.decoder(latent, snr_db, spatial_hw=spatial_hw)
-        per_image = ((recon - x) ** 2).mean(dim=[1, 2, 3])
+        per_image = per_item_mse(recon, x)  # identical to mean over [1, 2, 3] for images
         (gradient,) = torch.autograd.grad(per_image.sum(), latent)
     contribution = (gradient * latent.detach()).reshape(latent.shape[0], channels, -1).sum(dim=-1)
     return contribution.abs()
@@ -75,6 +76,9 @@ def compute_orders(
     orders: Dict[str, torch.Tensor] = {}
     for source in sources:
         if source == "attention":
+            if "af5_bottleneck" not in info["attn"]:
+                raise ValueError(f"importance source 'attention' needs a bottleneck attention gate; this model "
+                                 f"(arch={bundle.arch!r}) has none. Drop 'attention' from --importance.")
             scores = info["attn"]["af5_bottleneck"].reshape(batch, channels)
         elif source == "energy":
             scores = per_channel.pow(2).mean(dim=-1)

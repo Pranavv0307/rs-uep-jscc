@@ -12,6 +12,11 @@ trained or downloaded until you add ``--execute``.
 Phases (in order): verify, phase1 (multi-seed + Track A), phase2 (Track B),
 phase3 (Track C), phase4 (Track D), final (test tables + report).
 
+Extension phases (run only when named; ``--phase all`` keeps meaning the roadmap):
+g1 (DeepJSCC-Q attention ablation, documentations/G1_RUNBOOK_MAC.md) and speech
+(1-D ADJSCC-Q / DeepJSCC-Q on LibriSpeech, documentations/SPEECH_RUNBOOK_MAC.md). Use
+``--train_device mps`` to train on Apple silicon.
+
 Rules baked in (roadmap section 4): tuning (scheme selection, checkpoint choice)
 uses the validation split; the test split is evaluated only in ``final``, once,
 with the schemes chosen on validation; every full run uses 5 channel seeds
@@ -28,6 +33,28 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 PHASES = ("verify", "phase1", "phase2", "phase3", "phase4", "final")
+# Run only when asked for by name; not part of ``--phase all`` (documentations/ARCHITECTURE_DECISIONS.md, AD-10).
+EXTENSION_PHASES = ("g1", "speech")
+
+# G1 (attention ablation): DeepJSCC-Q init seeds. Same seeds as the converged ADJSCC-Q models (minus 21, kept
+# as the spare), so each pair also shares its data order (loader seed = seed + 1). AD-06.
+G1_SEEDS = (42, 100, 7, 13)
+# Published ADJSCC-Q family used as the reference in the comparison (all from git, no checkpoints needed).
+ADJSCC_PUBLISHED = {
+    42: "published_results/gpu/final/final_test.json",
+    100: "published_results/gpu/multiseed/seed100/test_sweep.json",
+    7: "published_results/gpu/multiseed/seed7/test_sweep.json",
+    13: "published_results/gpu/multiseed/seed13/test_sweep.json",
+    21: "published_results/gpu/multiseed/seed21/test_sweep.json",
+    2024: "published_results/gpu/multiseed/seed2024/test_sweep.json",   # not converged: reported, excluded
+}
+ADJSCC_SELECTION = ("published_results/gpu/phase1/val_sweep/selected_schemes.json+"
+                    "published_results/gpu/phase1/val_sweep_energy/selected_schemes.json")
+
+# Speech study S1: both 1-D architectures, 3 init seeds each (AD-18), same seeds as the image families.
+SPEECH_ARCHS = ("adjsccq1d", "deepjsccq1d")
+SPEECH_SEEDS = (42, 100, 7)
+SPEECH_CONFIGS = {arch: f"configs/speech_{arch}.yaml" for arch in SPEECH_ARCHS}
 
 
 @dataclass
@@ -275,6 +302,202 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
                  "--extra_insights", f"sensitivity head={r}/phase1/head/head_metrics.json",
                  "--out_dir", f"{r}/report"), [f"{r}/report/INSIGHTS.md"], True),
     ]
+    steps += g1_steps(cfg, mod, sweep, best, ranking, seeds)
+    steps += speech_steps(cfg, mod, sweep, best, ranking, seeds)
+    return steps
+
+
+def g1_steps(cfg, mod, sweep, best, ranking, seeds) -> List[Step]:
+    """G1: DeepJSCC-Q (ADJSCC-Q without attention), same protocol as the ADJSCC-Q family.
+
+    seed 42 gets the full Phase-1 treatment (A.2 proxies, A.3 head, validation scheme
+    selection); seeds 100/7/13 reuse seed 42's validation selection, exactly as the
+    ADJSCC-Q seeds 100/7/13/21 reused theirs. See documentations/G1_RUNBOOK_MAC.md.
+    """
+    data, r = cfg.data_dir, cfg.results
+    device = getattr(cfg, "train_device", "auto")
+    g1 = f"{r}/g1"
+    family = f"{g1}/deepjsccq"
+    primary = f"{family}/seed42"
+    config = "configs/deepjsccq_identity_train.yaml"
+    selection = f"{primary}/val_sweep/selected_schemes.json"
+
+    def train(name, description, folder, *extra):
+        return Step(name, "g1", description,
+                    mod("train_adjsccq_train_split", "--config", config, "--arch", "deepjsccq", "--split_seed", 42,
+                        "--skip_rs_sweep", "--device", device, "--data_dir", data, "--output_dir", folder, *extra),
+                    [best(folder), ranking(folder)], True)
+
+    steps = [train("g1_smoke_train", "Smoke test: 2-epoch DeepJSCC-Q run on the chosen device (numbers are NOT quoted)",
+                   f"{g1}/smoke_train", "--seed", 7, "--epochs", 2, "--oracle_max_images", 500,
+                   "--eval_max_images", 500)]
+    for seed in G1_SEEDS:
+        steps.append(train(f"g1_train_seed{seed}",
+                           f"Train DeepJSCC-Q from scratch, init seed {seed} (recipe v1, same 40k/10k split)",
+                           f"{family}/seed{seed}", "--seed", seed))
+    runs = [token for seed in G1_SEEDS for token in ("--run", f"seed{seed}={family}/seed{seed}")]
+    steps += [
+        Step("g1_multiseed", "g1", "DeepJSCC-Q damage profiles across init seeds",
+             mod("multiseed_analysis", *runs, "--output_dir", f"{family}/multiseed"),
+             [f"{family}/multiseed/multiseed.json"], True),
+        Step("g1_saliency_A2", "g1", "A.2 on DeepJSCC-Q: latent proxies vs true damage (validation)",
+             mod("feature_saliency", "--checkpoint", best(primary), "--reference_ranking", ranking(primary),
+                 "--data_dir", data, "--output_dir", f"{primary}/saliency"),
+             [f"{primary}/saliency/saliency.json"], True),
+        Step("g1_head_A3", "g1", "A.3 on DeepJSCC-Q: label 40k+10k images and train the sensitivity head",
+             mod("train_sensitivity_head", "--checkpoint", best(primary), "--reference_ranking", ranking(primary),
+                 "--data_dir", data, "--labels_dir", f"{primary}/head_labels", "--output_dir", f"{primary}/head",
+                 "--seeds", seeds),
+             [f"{primary}/head/sensitivity_head.pt"], True),
+        sweep("g1_val_sweep", "g1", "DeepJSCC-Q validation sweep, ALL schemes, for choosing the tier allocation",
+              best(primary), "val", "oracle,predicted,energy,l1", f"{primary}/val_sweep", "val_sweep",
+              rank=ranking(primary), head=f"{primary}/head/sensitivity_head.pt", seeds_arg="0,1,2",
+              extra=("--include_random_control", "--include_no_rs", "--max_images", 5000)),
+        Step("g1_select", "g1", "Select the DeepJSCC-Q tier allocation on its validation sweep",
+             mod("select_scheme", "--sweep", f"{primary}/val_sweep/val_sweep.json", "--output", selection),
+             [selection]),
+        sweep("g1_final_seed42", "g1", "TEST sweep, DeepJSCC-Q seed 42 (validation-selected schemes, 5 seeds)",
+              best(primary), "test", "oracle,predicted,energy,l1", f"{primary}/test_sweep", "test_sweep",
+              rank=ranking(primary), head=f"{primary}/head/sensitivity_head.pt",
+              schemes=f"{{selected:{selection}}}", extra=("--include_random_control", "--include_no_rs")),
+    ]
+    for seed in G1_SEEDS[1:]:
+        folder = f"{family}/seed{seed}"
+        steps.append(sweep(f"g1_final_seed{seed}", "g1",
+                           f"TEST sweep, DeepJSCC-Q seed {seed} (seed-42 validation selection, as for ADJSCC-Q)",
+                           best(folder), "test", "oracle,energy", f"{folder}/test_sweep", "test_sweep",
+                           rank=ranking(folder), schemes=f"{{selected:{selection}}}",
+                           extra=("--include_random_control", "--include_no_rs")))
+
+    # Same-hardware anchor (AD-07, accepted 2026-11-06): ADJSCC-Q seed 42 retrained on the G1 device and evaluated with the
+    # published ADJSCC-Q selection, so a hardware/backend effect can be told apart from the architecture effect.
+    anchor = f"{g1}/adjsccq_anchor/seed42"
+    steps += [
+        Step("g1_anchor_train", "g1", "Anchor: retrain ADJSCC-Q seed 42 on the G1 training device (AD-07)",
+             mod("train_adjsccq_train_split", "--arch", "adjsccq", "--seed", 42, "--split_seed", 42, "--skip_rs_sweep",
+                 "--device", device, "--data_dir", data, "--output_dir", anchor),
+             [best(anchor), ranking(anchor)], True),
+        sweep("g1_anchor_final", "g1", "Anchor: TEST sweep of the re-trained ADJSCC-Q seed 42 (AD-07)",
+              best(anchor), "test", "oracle,energy,attention", f"{anchor}/test_sweep", "test_sweep",
+              rank=ranking(anchor), schemes=f"{{selected:{ADJSCC_SELECTION}}}",
+              extra=("--include_random_control", "--include_no_rs")),
+    ]
+
+    def compare_args(with_anchor: bool) -> List[str]:
+        tokens = []
+        for seed, sweep_json in ADJSCC_PUBLISHED.items():
+            tokens += ["--model", f"adjsccq/seed{seed}=published_results/gpu/models/seed{seed}",
+                       "--sweep", f"adjsccq/seed{seed}={sweep_json}"]
+        for seed in G1_SEEDS:
+            folder = f"{family}/seed{seed}"
+            tokens += ["--model", f"deepjsccq/seed{seed}={folder}",
+                       "--sweep", f"deepjsccq/seed{seed}={folder}/test_sweep/test_sweep.json"]
+        if with_anchor:
+            tokens += ["--model", f"adjsccq_anchor/seed42={anchor}",
+                       "--sweep", f"adjsccq_anchor/seed42={anchor}/test_sweep/test_sweep.json"]
+        return tokens
+
+    steps += [
+        Step("g1_compare", "g1", "Compare ADJSCC-Q (published) with DeepJSCC-Q; apply the pre-registered rule",
+             mod("compare_architectures", *compare_args(False), "--output_dir", f"{g1}/compare"),
+             [f"{g1}/compare/compare.json"]),
+        Step("g1_compare_with_anchor", "g1", "Comparison of record: ADJSCC-Q, DeepJSCC-Q and the same-hardware anchor (AD-07)",
+             mod("compare_architectures", *compare_args(True), "--output_dir", f"{g1}/compare_with_anchor"),
+             [f"{g1}/compare_with_anchor/compare.json"]),
+    ]
+    return steps
+
+
+def speech_steps(cfg, mod, sweep, best, ranking, seeds) -> List[Step]:
+    """S1: does sensitivity-aware UEP carry over to speech, with and without attention?
+
+    Per architecture the image protocol is repeated on LibriSpeech: seed 42 gets A.2, A.3
+    and the validation scheme selection; the other seeds reuse that selection; every
+    test sweep uses 5 channel seeds and all test segments. See documentations/SPEECH_RUNBOOK_MAC.md.
+    """
+    data, r = cfg.data_dir, cfg.results
+    device = getattr(cfg, "train_device", "auto")
+    root = f"{r}/speech"
+    cache = f"{data}/librispeech_segments"
+    common = ("--dataset", "librispeech")
+
+    def train(name, description, arch, folder, *extra):
+        return Step(name, "speech", description,
+                    mod("train_speech_jscc", "--config", SPEECH_CONFIGS[arch], "--arch", arch, "--device", device,
+                        "--data_dir", data, "--output_dir", folder, *extra),
+                    [best(folder), ranking(folder)], True)
+
+    steps = [
+        Step("speech_data", "speech", "Download LibriSpeech (train-clean-100, dev-clean, test-clean) and build the "
+             "segment caches", mod("prepare_speech_data", "--download", "--build", "--data_dir", data),
+             [f"{cache}/{split}.npy" for split in ("train", "val", "test")]),
+        train("speech_smoke_train", "Smoke test: 2-epoch adjsccq1d run on 2,000 segments (numbers are NOT quoted)",
+              "adjsccq1d", f"{root}/smoke_train", "--seed", 7, "--epochs", 2, "--max_train", 2000,
+              "--oracle_max_items", 500),
+    ]
+    for arch in SPEECH_ARCHS:
+        family = f"{root}/{arch}"
+        primary = f"{family}/seed42"
+        selection = f"{primary}/val_sweep/selected_schemes.json"
+        attention = ",attention" if arch == "adjsccq1d" else ""
+        for seed in SPEECH_SEEDS:
+            steps.append(train(f"speech_train_{arch}_seed{seed}",
+                               f"Train {arch} on LibriSpeech from scratch, init seed {seed} (recipe v1)",
+                               arch, f"{family}/seed{seed}", "--seed", seed))
+        runs = [token for seed in SPEECH_SEEDS for token in ("--run", f"seed{seed}={family}/seed{seed}")]
+        steps += [
+            Step(f"speech_multiseed_{arch}", "speech", f"{arch}: damage profiles across init seeds",
+                 mod("multiseed_analysis", *runs, "--output_dir", f"{family}/multiseed"),
+                 [f"{family}/multiseed/multiseed.json"], True),
+            Step(f"speech_saliency_{arch}", "speech", f"A.2 on {arch}: latent proxies vs true damage (dev-clean)",
+                 mod("feature_saliency", "--checkpoint", best(primary), "--reference_ranking", ranking(primary),
+                     *common, "--data_dir", data, "--output_dir", f"{primary}/saliency"),
+                 [f"{primary}/saliency/saliency.json"], True),
+            Step(f"speech_head_{arch}", "speech", f"A.3 on {arch}: label train + dev segments, train the head",
+                 mod("train_sensitivity_head", "--checkpoint", best(primary), "--reference_ranking", ranking(primary),
+                     *common, "--data_dir", data, "--labels_dir", f"{primary}/head_labels",
+                     "--output_dir", f"{primary}/head", "--seeds", seeds),
+                 [f"{primary}/head/sensitivity_head.pt"], True),
+            sweep(f"speech_val_sweep_{arch}", "speech", f"{arch}: validation sweep, ALL schemes (dev-clean)",
+                  best(primary), "val", "oracle,predicted,energy,l1" + attention, f"{primary}/val_sweep", "val_sweep",
+                  rank=ranking(primary), head=f"{primary}/head/sensitivity_head.pt", seeds_arg="0,1,2",
+                  extra=(*common, "--include_random_control", "--include_no_rs")),
+            Step(f"speech_select_{arch}", "speech", f"{arch}: select the tier allocation on its validation sweep",
+                 mod("select_scheme", "--sweep", f"{primary}/val_sweep/val_sweep.json", "--output", selection),
+                 [selection]),
+            sweep(f"speech_final_{arch}_seed42", "speech", f"TEST sweep, {arch} seed 42 (test-clean, 5 seeds)",
+                  best(primary), "test", "oracle,predicted,energy,l1" + attention, f"{primary}/test_sweep",
+                  "test_sweep", rank=ranking(primary), head=f"{primary}/head/sensitivity_head.pt",
+                  schemes=f"{{selected:{selection}}}", extra=(*common, "--include_random_control", "--include_no_rs")),
+        ]
+        for seed in SPEECH_SEEDS[1:]:
+            folder = f"{family}/seed{seed}"
+            steps.append(sweep(f"speech_final_{arch}_seed{seed}", "speech",
+                               f"TEST sweep, {arch} seed {seed} (seed-42 validation selection)",
+                               best(folder), "test", "oracle,energy" + attention, f"{folder}/test_sweep", "test_sweep",
+                               rank=ranking(folder), schemes=f"{{selected:{selection}}}",
+                               extra=(*common, "--include_random_control", "--include_no_rs")))
+        steps.append(Step(f"speech_perceptual_{arch}", "speech",
+                          f"PESQ / STOI and WAV examples, {arch} seed 42 (500 test-clean segments, channel seed 0)",
+                          mod("eval_speech_perceptual", "--checkpoint", best(primary), "--oracle_ranking_file",
+                              ranking(primary), "--data_dir", data, "--split", "test", "--selection", selection,
+                              "--sources", "oracle,energy" + attention, "--output_dir", f"{primary}/perceptual"),
+                          [f"{primary}/perceptual/perceptual.json"]))
+    primary = f"{root}/adjsccq1d/seed42"
+    steps.append(Step("speech_attention_vs_damage", "speech", "adjsccq1d: attention vs true damage (dev-clean)",
+                      mod("attention_vs_damage", "--checkpoint", best(primary), *common, "--data_dir", data,
+                          "--split", "val", "--output_dir", f"{primary}/attention"),
+                      [f"{primary}/attention/attention_vs_damage.json"], True))
+    tokens = []
+    for arch in SPEECH_ARCHS:
+        for seed in SPEECH_SEEDS:
+            folder = f"{root}/{arch}/seed{seed}"
+            tokens += ["--model", f"{arch}/seed{seed}={folder}",
+                       "--sweep", f"{arch}/seed{seed}={folder}/test_sweep/test_sweep.json"]
+    steps.append(Step("speech_compare", "speech", "Speech: adjsccq1d vs deepjsccq1d under the frozen decision rule",
+                      mod("compare_architectures", *tokens, "--reference_family", "adjsccq1d",
+                          "--output_dir", f"{root}/compare"),
+                      [f"{root}/compare/compare.json"]))
     return steps
 
 
@@ -308,7 +531,8 @@ def git_commit() -> Optional[str]:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--phase", default=None, help=f"one of {PHASES} or 'all'")
+    parser.add_argument("--phase", default=None,
+                        help=f"one of {PHASES + EXTENSION_PHASES} or 'all' (= the roadmap phases {PHASES} only)")
     parser.add_argument("--only", default=None, help="comma list of step names")
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--execute", action="store_true", help="actually run (default: print only)")
@@ -323,16 +547,21 @@ def main():
     parser.add_argument("--seed42_dir", default="checkpoints/train_split_adjsccq",
                         help="folder with best_val.pth + oracle_ranking.json of the seed-42 model")
     parser.add_argument("--highres_dir", default=None, help="folder of high-res images for the Kodak fallback")
+    parser.add_argument("--train_device", default="auto", choices=["auto", "cpu", "cuda", "mps"],
+                        help="device for the g1 training steps (auto = CUDA if available, else CPU; mps = Apple)")
     cfg = parser.parse_args()
+    if cfg.train_device == "mps":
+        # Ops without an MPS kernel fall back to the CPU instead of crashing; children inherit this (AD-08).
+        os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 
     steps = build_steps(cfg)
     if cfg.list:
-        for phase in PHASES:
+        for phase in PHASES + EXTENSION_PHASES:
             print(f"\n[{phase}]")
             for step in (s for s in steps if s.phase == phase):
                 print(f"  {step.name:24s} {step.description}")
         return
-    selected = steps
+    selected = [s for s in steps if s.phase in PHASES]  # 'all' = the roadmap; extension phases only by name
     if cfg.only:
         names = {n.strip() for n in cfg.only.split(",")}
         unknown = names - {s.name for s in steps}
@@ -340,8 +569,8 @@ def main():
             raise SystemExit(f"unknown steps: {sorted(unknown)}")
         selected = [s for s in steps if s.name in names]
     elif cfg.phase and cfg.phase != "all":
-        if cfg.phase not in PHASES:
-            raise SystemExit(f"--phase must be one of {PHASES} or 'all'")
+        if cfg.phase not in PHASES + EXTENSION_PHASES:
+            raise SystemExit(f"--phase must be one of {PHASES + EXTENSION_PHASES} or 'all'")
         selected = [s for s in steps if s.phase == cfg.phase]
     elif not cfg.phase:
         parser.error("choose --phase, --only or --list")

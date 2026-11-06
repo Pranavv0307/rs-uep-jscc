@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from experiments.metrics import psnr_per_image
+from experiments.metrics import quality_db_per_item  # PSNR for images (unchanged), SNR for speech
 from experiments.model_io import ModelBundle, encode_full, reconstruct
 
 
@@ -30,13 +30,13 @@ def loo_damage_batch(bundle: ModelBundle, latent: torch.Tensor, x: torch.Tensor,
     channels = bundle.channels
     width = latent.shape[1] // channels
     clean = reconstruct(bundle, latent, None, snr_db, spatial_hw)
-    clean_psnr = psnr_per_image(clean, x)
+    clean_psnr = quality_db_per_item(clean, x)
     damage = torch.empty(latent.shape[0], channels, device=latent.device)
     for channel in range(channels):
         failed = torch.zeros_like(latent, dtype=torch.bool)
         failed[:, channel * width:(channel + 1) * width] = True
         recon = reconstruct(bundle, latent.masked_fill(failed, 0.0), failed, snr_db, spatial_hw)
-        damage[:, channel] = clean_psnr - psnr_per_image(recon, x)
+        damage[:, channel] = clean_psnr - quality_db_per_item(recon, x)
     return damage, clean_psnr
 
 
@@ -92,9 +92,10 @@ def count_macs(model: nn.Module, forward: Callable[[], object]) -> int:
 
     handles = []
     for module in model.modules():
-        if isinstance(module, nn.ConvTranspose2d):
+        # 1-D layers added for the speech models (S1); the formulas are dimension-agnostic.
+        if isinstance(module, (nn.ConvTranspose2d, nn.ConvTranspose1d)):
             handles.append(module.register_forward_hook(deconv_hook))
-        elif isinstance(module, nn.Conv2d):
+        elif isinstance(module, (nn.Conv2d, nn.Conv1d)):
             handles.append(module.register_forward_hook(conv_hook))
         elif isinstance(module, nn.Linear):
             handles.append(module.register_forward_hook(linear_hook))

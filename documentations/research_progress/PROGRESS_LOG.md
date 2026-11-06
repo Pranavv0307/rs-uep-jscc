@@ -312,3 +312,76 @@ Findings (all from `published_results/gpu/report/INSIGHTS.md`):
 * Kodak results use a CIFAR-trained model and are only qualitative.
 * `pipeline` step `final_base_ref`/`val_base_ref` (seed-42 base evaluated with robust-family settings) was added to
   `run_pipeline.py` but not run; the base-vs-robust comparison uses `final_base` for the base model.
+
+---
+
+## G0 / G1: generality study, code written (not executed) (2026-11-06)
+
+**Question.** Is sensitivity-aware UEP an ADJSCC effect or a Deep JSCC effect? ADJSCC's
+bottleneck attention gate scales each latent channel just before power normalisation, and
+latent energy is the best damage proxy, so the gate may itself create the imbalance UEP exploits.
+G1 removes the gate and changes nothing else.
+
+**Status:** code, tests and runbook written; **nothing has been run** (no tests, no training).
+Run order and gates: [`../G1_RUNBOOK_MAC.md`](../G1_RUNBOOK_MAC.md). Every design choice:
+[`../ARCHITECTURE_DECISIONS.md`](../ARCHITECTURE_DECISIONS.md) (AD-01 to AD-13).
+
+### What was done
+* **G0, model-agnostic pipeline:** `models/registry.py` (`model.arch`, default `adjsccq`, so every
+  existing checkpoint, config and launcher is unchanged). `ModelBundle` gains `arch` and
+  `has_attention`; the channel count comes from `encoder.num_channels`. The attention source,
+  `attention_vs_damage`, `feature_saliency`, `train_sensitivity_head` and the training script's
+  in-script sweep handle a model without attention explicitly.
+* **G1, DeepJSCC-Q:** `models/deepjsccq.py` (subclasses of the frozen `models/deepjscc.py`, plus
+  the same quantiser), `configs/deepjsccq_identity_train.yaml` (recipe v1, identical except `arch`).
+* **Training on Apple silicon:** `train_adjsccq_train_split.py --device {auto,cpu,cuda,mps}`
+  (`auto` unchanged) and `--arch`.
+* **Comparison:** `experiments/compare_architectures.py` (per-model and per-family tables, the
+  pre-registered decision rule, figures).
+* **Orchestrator:** `run_pipeline.py` extension phase `g1` (not part of `--phase all`), with
+  `--train_device`.
+* **Tests:** `tests/test_deepjsccq.py`; `tests/test_phase_modules.py` updated for the extension
+  phase and the new modules.
+
+### Decisions confirmed by the owners (2026-11-06)
+* AD-09: decision thresholds **frozen** before any G1 model was trained (C1 top-4 share >= 0.40;
+  C2 oracle gain at 40% loss >= +1.5 dB, CI > 0; C3 random < 0.5 x oracle; FLAT top-4 < 0.30 and
+  oracle within 0.5 dB of random).
+* AD-07: the same-hardware ADJSCC-Q anchor (seed 42 retrained on the Mac) is run;
+  `g1_compare_with_anchor` is the comparison of record.
+* AD-05 / AD-06: recipe v1 unchanged; 4 seeds (42, 100, 7, 13) plus spare 21.
+
+---
+
+## S1: speech study, code written (not executed) (2026-11-06)
+
+**Question.** Does sensitivity-aware UEP carry over from images to speech, and in speech, does it
+depend on attention? Two 1-D models are compared: `adjsccq1d` (with attention) and `deepjsccq1d`
+(without). Both use the CIFAR latent layout (16 × 64 = 1024 bytes per 1.024 s segment, 8 kbit/s),
+so the RS coding layer is identical to the image study.
+
+**Status:** code, tests and runbook written; **nothing has been run** (no tests, no download, no
+training). Run order and gates: [`../SPEECH_RUNBOOK_MAC.md`](../SPEECH_RUNBOOK_MAC.md). Decisions:
+[`../ARCHITECTURE_DECISIONS.md`](../ARCHITECTURE_DECISIONS.md), AD-14 to AD-21.
+
+### What was done
+* **Models:** `models/speech_jscc.py`, registered as `adjsccq1d` / `deepjsccq1d`. Configs:
+  `configs/speech_{adjsccq1d,deepjsccq1d}.yaml`, identical except `model.arch`.
+* **Data:** `data/speech.py` and `experiments/prepare_speech_data.py`. LibriSpeech train-clean-100 /
+  dev-clean / test-clean (speaker-disjoint), non-silent 1.024 s segments, 40k / 4k / 4k, seeded,
+  int16 cache plus a manifest with SHA-256.
+* **Training:** `experiments/train_speech_jscc.py`. Recipe v1; the image trainer's checkpoint
+  format and `metrics.json` keys; quality = per-segment SNR in the `psnr_db_*` fields.
+* **Perceptual check:** `experiments/eval_speech_perceptual.py`. PESQ-WB / STOI on 500 test
+  segments with the sweep's exact losses, plus WAV examples.
+* **Shared code, modality-aware:** metrics helpers (the image path is bit-identical), LOO, Taylor,
+  `CellAccumulator` (SI-SDR instead of SSIM), MAC counter (Conv1d), `ModelBundle.modality` /
+  `example_input`, `load_eval_tensor`, and `--dataset` on `eval_rs_uep`, `feature_saliency`,
+  `train_sensitivity_head` and `attention_vs_damage` (default `cifar10`).
+* **Orchestrator:** `run_pipeline.py` extension phase `speech`.
+* **Tests:** `tests/test_speech.py` (fake LibriSpeech tree, one-epoch training run).
+  `tests/test_phase_modules.py` gains the new modules in its import list.
+
+### Open decisions (owners)
+* AD-19: speech decision thresholds (proposed: the AD-09 ones), **before** the speech test sweeps.
+* AD-14 / AD-15 / AD-18: widths 16–32, 40k training segments, 3 seeds per architecture.

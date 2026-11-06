@@ -34,7 +34,7 @@ import os
 import numpy as np
 import torch
 
-from data.datasets import is_official_test, load_image_tensor
+from data.datasets import EVAL_DATASETS, is_official_test, load_eval_tensor
 from experiments import plotting, wandb_utils
 from experiments.importance_sources import taylor_scores
 from experiments.model_io import encode_full, load_model_bundle
@@ -48,6 +48,8 @@ def main():
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--reference_ranking", required=True, help="train-split oracle_ranking.json")
     parser.add_argument("--data_dir", default="./data")
+    parser.add_argument("--dataset", default="cifar10", choices=list(EVAL_DATASETS),
+                        help="librispeech for the speech models (S1)")
     parser.add_argument("--split", default="val")
     parser.add_argument("--max_images", type=int, default=2000)
     parser.add_argument("--batch_size", type=int, default=250)
@@ -59,15 +61,16 @@ def main():
 
     seed_everything(args.global_seed)
     bundle = load_model_bundle(args.checkpoint, torch.device("cpu"))
-    if is_official_test("cifar10", args.split):
+    if is_official_test(args.dataset, args.split):
         log_test_access("experiments.feature_saliency", args.checkpoint)
-    images = load_image_tensor("cifar10", args.split, args.data_dir, args.max_images, bundle.split_seed)
+    images = load_eval_tensor(args.dataset, args.split, args.data_dir, args.max_images, bundle.split_seed)
     with open(args.reference_ranking, encoding="utf-8") as handle:
         static = json.load(handle)["ranking_channels_most_to_least_important"]
     static_scores = np.zeros(bundle.channels)
     static_scores[static] = np.arange(bundle.channels, 0, -1)
 
-    names = ("attention", "energy", "variance", "l1", "taylor")
+    # A model without attention gates (DeepJSCC-Q, G1) is scored on the latent proxies only.
+    names = (("attention",) if bundle.has_attention else ()) + ("energy", "variance", "l1", "taylor")
     scores = {name: [] for name in names}
     damages = []
     for start in range(0, len(images), args.batch_size):
@@ -77,7 +80,8 @@ def main():
             latent = bundle.encoder.quantizer.dequantize_indices(info["idx"])
             damage, _ = loo_damage_batch(bundle, latent, x, bundle.snr_db)
         per_channel = info["z"].reshape(x.shape[0], bundle.channels, -1)
-        scores["attention"].append(info["attn"]["af5_bottleneck"])
+        if bundle.has_attention:
+            scores["attention"].append(info["attn"]["af5_bottleneck"])
         scores["energy"].append(per_channel.pow(2).mean(-1))
         scores["variance"].append(per_channel.var(-1, unbiased=False))
         scores["l1"].append(per_channel.abs().mean(-1))
@@ -114,7 +118,7 @@ def main():
     write_json(os.path.join(args.output_dir, "saliency.json"), {
         "metadata": build_provenance(args=args, checkpoint_path=args.checkpoint, global_seed=args.global_seed,
                                      extra_files={"reference_ranking": args.reference_ranking},
-                                     split_info={"dataset": "cifar10", "split": args.split}),
+                                     split_info={"dataset": args.dataset, "split": args.split}),
         "stats": stats, "insights": notes})
 
     labels = list(stats)

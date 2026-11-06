@@ -39,7 +39,7 @@ from coding.erasure_channel import sample_master_mask
 from coding.interleave import packet_mask_from_timeline
 from coding.rs_pipeline import SCHEME_CANDIDATES
 from coding.scaling import scheme_catalog
-from data.datasets import is_official_test, load_image_tensor
+from data.datasets import EVAL_DATASETS, is_official_test, load_eval_tensor
 from experiments import wandb_utils
 from experiments.model_io import load_model_bundle, load_sensitivity_head
 from experiments.pipeline_core import (
@@ -166,8 +166,9 @@ def build_parser(description=__doc__):
     parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--data_dir", default="./data")
-    parser.add_argument("--dataset", default="cifar10", choices=["cifar10", "cifar100", "stl10"])
-    parser.add_argument("--split", default="val", help="cifar10: train|val|test; others: train|test")
+    parser.add_argument("--dataset", default="cifar10", choices=list(EVAL_DATASETS),
+                        help="librispeech = speech segments (S1); needs a speech checkpoint")
+    parser.add_argument("--split", default="val", help="cifar10, librispeech: train|val|test; others: train|test")
     parser.add_argument("--split_seed", type=int, default=None, help="default: the checkpoint's own split seed")
     parser.add_argument("--batch_size", type=int, default=250)
     parser.add_argument("--max_images", type=int, default=None, help="default: the whole split")
@@ -216,7 +217,9 @@ def prepare_data(args, sources=None, note: str = ""):
         if source.startswith("static:") and source[7:] not in rankings:
             raise SystemExit(f"importance '{source}' needs a ranking named '{source[7:]}' "
                              "(--rankings name=path / --oracle_ranking_file)")
-    images = load_image_tensor(args.dataset, args.split, args.data_dir, args.max_images, split_seed)
+    images = load_eval_tensor(args.dataset, args.split, args.data_dir, args.max_images, split_seed)
+    if (images.dim() == 3) != (bundle.modality == "speech"):
+        raise SystemExit(f"dataset {args.dataset!r} does not match the checkpoint's modality ({bundle.modality})")
     head = load_sensitivity_head(args.head_checkpoint, device) if args.head_checkpoint else None
     try:
         from tqdm import tqdm as progress
@@ -238,7 +241,10 @@ def evaluation_metadata(args, data: dict, extra: dict) -> dict:
         "importance_sources": data["sources"],
         "rankings": {name: {**entry["info"], "ranking": entry["ranking"]} for name, entry in rankings.items()},
         "images_per_seed": len(data["images"]),
-        "is_full_test_set": bool(is_official_test(args.dataset, args.split) and len(data["images"]) >= 10_000),
+        "is_full_test_set": bool(is_official_test(args.dataset, args.split) and (
+            len(data["images"]) >= 10_000 if args.dataset == "cifar10" else args.max_images is None)),
+        "quality_metric": ("per-segment SNR (dB), stored in the psnr_db_* fields" if data["bundle"].modality == "speech"
+                           else "per-image PSNR (dB)"),
         "channels": bundle.channels, "packet_size": args.packet_size, "overhead": args.overhead,
         "clean_psnr_mean": float(np.mean(data["prep"]["clean_psnr"])),
         "side_info_rule": "0 B for uniform/no_rs, one byte per channel for sorted methods",
