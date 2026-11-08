@@ -10,7 +10,7 @@ This is ADJSCC-Q (``models/adjsccq.py``) with the ten AF attention modules
 * the same latent shape: 16 channels x 8 x 8 = 1024 bytes at k/n = 1/6,
 
 so every Reed-Solomon scheme, packet mask and evaluation script applies
-unchanged. See ``documentations/ARCHITECTURE_DECISIONS.md`` (AD-02 to AD-04).
+unchanged. See ``docs/02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md`` (AD-02 to AD-04).
 
 Interface parity with ADJSCC-Q
 ------------------------------

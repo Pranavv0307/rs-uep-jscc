@@ -263,7 +263,7 @@ def test_pipeline_steps_are_unique_well_formed_and_dry():
 
     import run_pipeline
 
-    cfg = argparse.Namespace(data_dir="./data", results="results", seed42_dir="checkpoints/train_split_adjsccq",
+    cfg = argparse.Namespace(data_dir="./data", results="results", seed42_dir="results/gpu/models/seed42",
                              highres_dir="D:/images")
     steps = run_pipeline.build_steps(cfg)
     names = [s.name for s in steps]

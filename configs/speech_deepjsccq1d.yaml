@@ -1,6 +1,6 @@
 # S1 speech study: 1-D DeepJSCC-Q: the same backbone without attention (speech counterpart of the G1 ablation).
 # configs/speech_adjsccq1d.yaml and configs/speech_deepjsccq1d.yaml differ only in model.arch.
-# Recipe v1 and quantiser identical to the image models (documentations/ARCHITECTURE_DECISIONS.md, AD-14 to AD-18).
+# Recipe v1 and quantiser identical to the image models (docs/02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md, AD-14 to AD-18).
 seed: 42
 
 data:

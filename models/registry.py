@@ -9,7 +9,7 @@ Every architecture registered here must provide the ADJSCC-Q interface (see
 ``encoder.encoder`` (backbone), ``encoder.quantizer``, ``encoder.k``,
 ``encoder.num_channels``, ``encoder.calibrate_quantizer``, ``encoder.has_attention``
 and ``decoder(z, snr_db, spatial_hw=...)``. ``tests/test_deepjsccq.py`` and
-``tests/test_speech.py`` check this. See ``documentations/ARCHITECTURE_DECISIONS.md``
+``tests/test_speech.py`` check this. See ``docs/02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md``
 (AD-01, AD-14).
 
 Each entry also names its *modality* (``image``: inputs ``(B, 3, H, W)``, config keys

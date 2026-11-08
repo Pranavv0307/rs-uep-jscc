@@ -21,8 +21,8 @@ ranking, the static train-split ranking, and the closed-form proxies
 top-1 hit rate, within-image Spearman, R^2, and *protection regret* (dB of true
 damage in the true top-4 that the predicted top-4 fails to cover).
 
-    python -m experiments.train_sensitivity_head --checkpoint checkpoints/train_split_adjsccq/best_val.pth \\
-        --reference_ranking checkpoints/train_split_adjsccq/oracle_ranking.json \\
+    python -m experiments.train_sensitivity_head --checkpoint results/gpu/models/seed42/best_val.pth \\
+        --reference_ranking results/gpu/models/seed42/oracle_ranking.json \\
         --labels_dir results/phase1/head_labels --output_dir results/phase1/head --seeds 0,1,2,3,4
 """
 import argparse

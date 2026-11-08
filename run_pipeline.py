@@ -13,8 +13,8 @@ Phases (in order): verify, phase1 (multi-seed + Track A), phase2 (Track B),
 phase3 (Track C), phase4 (Track D), final (test tables + report).
 
 Extension phases (run only when named; ``--phase all`` keeps meaning the roadmap):
-g1 (DeepJSCC-Q attention ablation, documentations/G1_RUNBOOK_MAC.md) and speech
-(1-D ADJSCC-Q / DeepJSCC-Q on LibriSpeech, documentations/SPEECH_RUNBOOK_MAC.md). Use
+g1 (DeepJSCC-Q attention ablation, docs/03_runbooks/G1_DEEPJSCCQ_ATTENTION_ABLATION_RUNBOOK_MAC_MPS.md) and speech
+(1-D ADJSCC-Q / DeepJSCC-Q on LibriSpeech, docs/03_runbooks/S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md). Use
 ``--train_device mps`` to train on Apple silicon.
 
 Rules baked in (roadmap section 4): tuning (scheme selection, checkpoint choice)
@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 PHASES = ("verify", "phase1", "phase2", "phase3", "phase4", "final")
-# Run only when asked for by name; not part of ``--phase all`` (documentations/ARCHITECTURE_DECISIONS.md, AD-10).
+# Run only when asked for by name; not part of ``--phase all`` (docs/02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md, AD-10).
 EXTENSION_PHASES = ("g1", "speech")
 
 # G1 (attention ablation): DeepJSCC-Q init seeds. Same seeds as the converged ADJSCC-Q models (minus 21, kept
@@ -312,7 +312,7 @@ def g1_steps(cfg, mod, sweep, best, ranking, seeds) -> List[Step]:
 
     seed 42 gets the full Phase-1 treatment (A.2 proxies, A.3 head, validation scheme
     selection); seeds 100/7/13 reuse seed 42's validation selection, exactly as the
-    ADJSCC-Q seeds 100/7/13/21 reused theirs. See documentations/G1_RUNBOOK_MAC.md.
+    ADJSCC-Q seeds 100/7/13/21 reused theirs. See docs/03_runbooks/G1_DEEPJSCCQ_ATTENTION_ABLATION_RUNBOOK_MAC_MPS.md.
     """
     data, r = cfg.data_dir, cfg.results
     device = getattr(cfg, "train_device", "auto")
@@ -413,7 +413,7 @@ def speech_steps(cfg, mod, sweep, best, ranking, seeds) -> List[Step]:
 
     Per architecture the image protocol is repeated on LibriSpeech: seed 42 gets A.2, A.3
     and the validation scheme selection; the other seeds reuse that selection; every
-    test sweep uses 5 channel seeds and all test segments. See documentations/SPEECH_RUNBOOK_MAC.md.
+    test sweep uses 5 channel seeds and all test segments. See docs/03_runbooks/S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md.
     """
     data, r = cfg.data_dir, cfg.results
     device = getattr(cfg, "train_device", "auto")
@@ -544,7 +544,7 @@ def main():
     parser.add_argument("--workers", type=int, default=1, help="CPU workers for the evaluation sweeps")
     parser.add_argument("--data_dir", default="./data")
     parser.add_argument("--results", default="results")
-    parser.add_argument("--seed42_dir", default="checkpoints/train_split_adjsccq",
+    parser.add_argument("--seed42_dir", default="results/gpu/models/seed42",
                         help="folder with best_val.pth + oracle_ranking.json of the seed-42 model")
     parser.add_argument("--highres_dir", default=None, help="folder of high-res images for the Kodak fallback")
     parser.add_argument("--train_device", default="auto", choices=["auto", "cpu", "cuda", "mps"],

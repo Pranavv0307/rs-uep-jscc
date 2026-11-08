@@ -15,7 +15,7 @@ the gain over uniform RS of the best tiered scheme of every importance source at
 loss rate and averaged over loss >= 0.35 -- the same "best scheme among the
 validation-selected ones" rule that produced INSIGHTS.md. Per family: mean, sample std
 and 95% t-interval over the converged models. Then the pre-registered decision rule
-(``documentations/ARCHITECTURE_DECISIONS.md``, AD-09) is applied to each family:
+(``docs/02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md``, AD-09) is applied to each family:
 
 * C1 concentration:   family mean top-4 share >= ``--min_top4_share``         (0.40; even split = 4/C)
 * C2 UEP gain:        every model's oracle gain at ``--decision_rate`` >= ``--min_gain_db``

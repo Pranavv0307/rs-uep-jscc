@@ -6,7 +6,7 @@ Two architectures, registered in ``models/registry.py``:
 * ``deepjsccq1d`` -- the same backbone without attention (as DeepJSCC-Q, the G1 ablation),
 
 so the speech study crosses modality with the attention ablation instead of
-confounding them (``documentations/ARCHITECTURE_DECISIONS.md``, AD-14 to AD-17).
+confounding them (``docs/02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md``, AD-14 to AD-17).
 
 Geometry (defaults)
 -------------------

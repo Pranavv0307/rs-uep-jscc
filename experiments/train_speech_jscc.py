@@ -1,7 +1,7 @@
 """Train a speech JSCC-Q model (S1) on LibriSpeech segments, mirroring the image training script.
 
 Same protocol as ``experiments/train_adjsccq_train_split.py`` so that the two
-modalities differ only in the data and the 1-D layers (``documentations/ARCHITECTURE_DECISIONS.md``,
+modalities differ only in the data and the 1-D layers (``docs/02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md``,
 AD-14 to AD-18):
 
 * recipe v1: Adam (lr 1e-3, constant), no clipping, MSE loss, quantiser sigma annealed

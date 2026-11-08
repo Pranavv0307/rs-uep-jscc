@@ -14,7 +14,7 @@ bottleneck attention gate of the same channel, then measures
 Outputs the left panel (scatter) and right panel (sorted oracle damage bars) as
 vector+PNG figures, plus raw arrays for re-plotting.
 
-    python -m experiments.attention_vs_damage --checkpoint checkpoints/train_split_adjsccq/best_val.pth \\
+    python -m experiments.attention_vs_damage --checkpoint results/gpu/models/seed42/best_val.pth \\
         --split val --max_images 2000 --output_dir results/phase1/attention
 """
 import argparse

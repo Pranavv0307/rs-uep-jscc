@@ -22,9 +22,9 @@ markdown, per-image PSNR arrays, and vector+PNG figures.
 
 Example (full protocol, final test table)::
 
-    python -m experiments.eval_rs_uep --checkpoint checkpoints/train_split_adjsccq/best_val.pth \\
+    python -m experiments.eval_rs_uep --checkpoint results/gpu/models/seed42/best_val.pth \\
         --split test --importance attention,oracle --oracle_ranking_file \\
-        checkpoints/train_split_adjsccq/oracle_ranking.json --seeds 0,1,2,3,4 \\
+        results/gpu/models/seed42/oracle_ranking.json --seeds 0,1,2,3,4 \\
         --include_no_rs --include_random_control --workers 8 --output_dir results/eval/final
 """
 import argparse
