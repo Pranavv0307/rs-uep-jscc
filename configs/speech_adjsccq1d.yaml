@@ -1,0 +1,37 @@
+# S1 speech study: 1-D ADJSCC-Q: AF attention after every layer (speech counterpart of ADJSCC-Q).
+# configs/speech_adjsccq1d.yaml and configs/speech_deepjsccq1d.yaml differ only in model.arch.
+# Recipe v1 and quantiser identical to the image models (docs/02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md, AD-14 to AD-18).
+seed: 42
+
+data:
+  dataset: librispeech        # segment cache from: python -m experiments.prepare_speech_data --build
+  batch_size: 64
+  num_workers: 2
+  max_train: null             # null = all 40,000 training segments
+
+model:
+  arch: adjsccq1d
+  segment_length: 16384       # 1.024 s at 16 kHz
+  latent_channels: 16         # 16 channels x 64 steps = 1024 bytes (8 kbit/s), the CIFAR latent layout
+  widths: [16, 32, 32, 32]    # hidden widths, as in the image backbone
+
+quantizer:
+  num_levels: 256
+  init_range: [-3.0, 3.0]
+  calibrate_low_pct: 1.0
+  calibrate_high_pct: 99.0
+  sigma_start: 1.0
+  sigma_end: 0.05
+  sigma_anneal_epochs: 50
+
+# Fixed nominal value passed to the AF gates (as for the image models); ignored without attention.
+af_conditioning:
+  nominal_snr_db: 10.0
+
+train:
+  lr: 0.001
+  epochs: 60
+  log_every: 100
+
+wandb:
+  project: rs-uep-jscc

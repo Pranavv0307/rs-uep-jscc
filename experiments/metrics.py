@@ -75,6 +75,56 @@ def psnr_per_image(x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
     return 10 * torch.log10(1.0 / mse.clamp_min(1e-10))
 
 
+# --------------------------------------------------------------------------
+# Modality-aware helpers (speech study S1). Images (B, 3, H, W) always take the
+# exact pre-S1 code path above; audio is (B, 1, L) in [-1, 1].
+# --------------------------------------------------------------------------
+def is_audio(x: torch.Tensor) -> bool:
+    return x.dim() == 3
+
+
+def per_item_mse(x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+    if x.dim() == 4:
+        return ((x_hat - x) ** 2).mean(dim=[1, 2, 3])
+    return ((x_hat - x) ** 2).flatten(1).mean(dim=1)
+
+
+def snr_db_per_item(x_hat: torch.Tensor, x: torch.Tensor, eps: float = 1e-10) -> torch.Tensor:
+    """Per-segment SNR, 10 log10(||x||^2 / ||x - x_hat||^2).
+
+    The difference of two SNRs of the same segment equals the difference of the
+    corresponding PSNRs (the signal power cancels), so leave-one-out damage and
+    paired gains in dB mean the same thing for speech and images (AD-16).
+    """
+    signal = x.flatten(1).pow(2).sum(dim=1)
+    noise = (x_hat - x).flatten(1).pow(2).sum(dim=1)
+    return 10 * torch.log10(signal.clamp_min(eps) / noise.clamp_min(eps))
+
+
+def si_sdr_db_per_item(x_hat: torch.Tensor, x: torch.Tensor, eps: float = 1e-10) -> torch.Tensor:
+    """Scale-invariant SDR (Le Roux et al. 2019) per segment, zero-mean version."""
+    reference = x.flatten(1)
+    estimate = x_hat.flatten(1)
+    reference = reference - reference.mean(dim=1, keepdim=True)
+    estimate = estimate - estimate.mean(dim=1, keepdim=True)
+    scale = (estimate * reference).sum(dim=1, keepdim=True) / reference.pow(2).sum(dim=1, keepdim=True).clamp_min(eps)
+    target = scale * reference
+    residual = estimate - target
+    return 10 * torch.log10(target.pow(2).sum(dim=1).clamp_min(eps) / residual.pow(2).sum(dim=1).clamp_min(eps))
+
+
+def quality_db_per_item(x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+    """The pipeline's primary per-item quality in dB: PSNR for images (unchanged), SNR for audio.
+
+    Stored under the existing ``psnr_db_*`` result keys so selection, reporting and
+    comparison code work for both modalities; speech result files say so in their
+    metadata (``quality_metric``).
+    """
+    if x.dim() == 4:
+        return psnr_per_image(x_hat, x)
+    return snr_db_per_item(x_hat, x)
+
+
 _LPIPS = {}
 
 

@@ -263,12 +263,12 @@ def test_pipeline_steps_are_unique_well_formed_and_dry():
 
     import run_pipeline
 
-    cfg = argparse.Namespace(data_dir="./data", results="results", seed42_dir="checkpoints/train_split_adjsccq",
+    cfg = argparse.Namespace(data_dir="./data", results="results", seed42_dir="results/gpu/models/seed42",
                              highres_dir="D:/images")
     steps = run_pipeline.build_steps(cfg)
     names = [s.name for s in steps]
     assert len(names) == len(set(names))
-    assert {s.phase for s in steps} == set(run_pipeline.PHASES)
+    assert {s.phase for s in steps} == set(run_pipeline.PHASES) | set(run_pipeline.EXTENSION_PHASES)
     for step in steps:
         assert all(isinstance(token, str) for token in step.command), step.name
         run_pipeline.resolve(list(step.command), dry_run=True)  # placeholders resolve in a dry run
@@ -285,6 +285,9 @@ def test_pipeline_steps_are_unique_well_formed_and_dry():
     "experiments.transfer_sensitivity", "experiments.attention_vs_damage", "experiments.multiseed_analysis",
     "experiments.select_scheme", "experiments.make_report", "experiments.download_data",
     "experiments.train_adjsccq_train_split", "experiments.visualize_reconstructions",
+    "experiments.compare_architectures", "models.registry", "models.deepjsccq",
+    "experiments.train_speech_jscc", "experiments.prepare_speech_data", "experiments.eval_speech_perceptual",
+    "models.speech_jscc", "data.speech",
 ])
 def test_every_script_imports_cleanly(module):
     assert importlib.import_module(module) is not None

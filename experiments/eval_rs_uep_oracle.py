@@ -13,8 +13,8 @@ recorded in the output metadata.
 Example::
 
     python -m experiments.eval_rs_uep_oracle \\
-        --checkpoint checkpoints/train_split_adjsccq/best_val.pth \\
-        --oracle_ranking_file checkpoints/train_split_adjsccq/oracle_ranking.json \\
+        --checkpoint results/gpu/models/seed42/best_val.pth \\
+        --oracle_ranking_file results/gpu/models/seed42/oracle_ranking.json \\
         --split test --seeds 0,1,2,3,4 --include_no_rs --output_dir results/eval/oracle_test
 """
 from experiments.eval_rs_uep import build_parser, run_and_save

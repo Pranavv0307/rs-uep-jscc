@@ -8,6 +8,14 @@ official 10,000-image test split is held out until final evaluation.
 The workflow saves best/final checkpoints, computes a frozen training-derived
 oracle channel ranking by leave-one-channel-out PSNR drop, and evaluates both
 attention and oracle importance under the complete RS-UEP sweep.
+
+G0/G1: ``--arch`` (or ``model.arch`` in the config) selects the architecture
+through ``models/registry.py``: ``adjsccq`` (default; identical to the pre-G0
+behaviour) or ``deepjsccq`` (same backbone without attention). The in-script
+RS sweep compares attention with oracle, so it only runs for models that have
+attention; every model is evaluated by ``experiments/eval_rs_uep.py``.
+``--device`` adds Apple-silicon (``mps``) training; ``auto`` keeps the old rule
+(CUDA if available, else CPU) so existing launchers are unaffected.
 """
 import argparse
 import json
@@ -45,13 +53,30 @@ from experiments.reproducibility import (
 from data.splits import make_loaders
 from experiments import wandb_utils
 from experiments.reproducibility import log_test_access
-from models.adjsccq import ADJSCCQDecoder, ADJSCCQEncoder, NOMINAL_SNR_DB_IDENTITY
+from models.adjsccq import NOMINAL_SNR_DB_IDENTITY
+from models.registry import ARCHITECTURES, build_jscc, model_arch
 
 
 DEFAULT_CONFIG = "configs/adjsccq_identity_train.yaml"
 DEFAULT_OUTPUT_DIR = "results/train_split_adjsccq"
 DEFAULT_PROJECT = "rs-uep-jscc"
 DEFAULT_VAL_SIZE = 10_000
+DEVICE_CHOICES = ("auto", "cpu", "cuda", "mps")
+
+
+def resolve_device(name: str) -> torch.device:
+    """``auto`` = CUDA if available, else CPU (the pre-G0 rule, so Kaggle runs are unchanged).
+
+    ``mps`` (Apple silicon) and ``cuda`` must be requested explicitly and fail
+    loudly when unavailable instead of silently falling back to the CPU.
+    """
+    if name == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if name == "mps" and not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
+        raise SystemExit("--device mps requested but MPS is not available (needs Apple silicon and torch >= 2.0)")
+    if name == "cuda" and not torch.cuda.is_available():
+        raise SystemExit("--device cuda requested but CUDA is not available")
+    return torch.device(name)
 
 
 def psnr_from_mse(mse: float) -> float:
@@ -120,7 +145,7 @@ def compute_oracle_ranking(encoder, decoder, loader, snr_db: float, device,
     """Rank channels by mean leave-one-channel-out reconstruction PSNR drop."""
     encoder.eval()
     decoder.eval()
-    channel_count = encoder.encoder.af5.num_channels  # 16 at k/n = 1/6; 6/8/32 in the k/n sweep
+    channel_count = encoder.num_channels  # 16 at k/n = 1/6; 6/8/32 in the k/n sweep
     psnr_drop = torch.zeros(channel_count, dtype=torch.float64)
     mse_increase = torch.zeros(channel_count, dtype=torch.float64)
     ssim_drop = torch.zeros(channel_count, dtype=torch.float64)
@@ -332,7 +357,8 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
          seed_override: Optional[int] = None, split_seed: int = 42,
          epochs_override: Optional[int] = None, k_over_n_override: Optional[float] = None,
          skip_rs_sweep: bool = False, lr_schedule: str = "constant", grad_clip: float = 0.0,
-         lr_min: float = 1e-5, lr_override: Optional[float] = None) -> None:
+         lr_min: float = 1e-5, lr_override: Optional[float] = None,
+         arch_override: Optional[str] = None, device_name: str = "auto") -> None:
     """Train one model.
 
     ``seed_override`` is the *model* seed (initialisation, shuffling, dropout of
@@ -340,7 +366,8 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
     from different seeds still see the same train/validation split.
     ``skip_rs_sweep`` leaves the (slow) packet-erasure sweep to
     ``experiments/eval_rs_uep.py``, which parallelises it and supports every
-    importance source.
+    importance source. ``arch_override`` replaces ``model.arch`` of the config
+    (G0); ``device_name`` is one of ``DEVICE_CHOICES``.
     """
     with open(config_path, encoding="utf-8") as handle:
         cfg = yaml.safe_load(handle)
@@ -352,10 +379,14 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         cfg["model"]["k_over_n"] = k_over_n_override
     if lr_override is not None:
         cfg["train"]["lr"] = lr_override
+    if arch_override is not None:
+        cfg["model"]["arch"] = arch_override
+    # Recorded in every checkpoint so load_model_bundle rebuilds the right architecture.
+    arch = cfg["model"]["arch"] = model_arch(cfg)
     seed = int(cfg.get("seed", 42))
     cfg["split_seed"] = split_seed
     seed_everything(seed)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = resolve_device(device_name)
     os.makedirs(output_dir, exist_ok=True)
 
     train_loader, val_loader, test_loader = make_loaders(
@@ -379,24 +410,20 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         wandb = wandb_module
         run = wandb.init(
             project=wandb_project,
-            name=wandb_name or f"adjsccq-train-split-seed{seed}-kn{cfg['model']['k_over_n']:.4f}",
-            tags=["train-validation-test", "adjsccq", "rs-uep", "oracle", f"seed{seed}"],
+            name=wandb_name or f"{arch}-train-split-seed{seed}-kn{cfg['model']['k_over_n']:.4f}",
+            tags=["train-validation-test", arch, "rs-uep", "oracle", f"seed{seed}"],
             group="models",
             job_type="train",
             config=cfg,
         )
 
-    nominal_snr_db = cfg["af_conditioning"]["nominal_snr_db"]
-    encoder = ADJSCCQEncoder(
-        k_over_n=cfg["model"]["k_over_n"],
-        image_size=cfg["model"]["image_size"],
-        num_levels=cfg["quantizer"]["num_levels"],
-        init_range=tuple(cfg["quantizer"]["init_range"]),
-        init_sigma=cfg["quantizer"]["sigma_start"],
-    ).to(device)
-    decoder = ADJSCCQDecoder(k=encoder.k, image_size=cfg["model"]["image_size"]).to(device)
+    # Passed to every forward call; models without SNR-conditioned layers (DeepJSCC-Q) ignore it.
+    nominal_snr_db = cfg.get("af_conditioning", {}).get("nominal_snr_db", NOMINAL_SNR_DB_IDENTITY)
+    # Same arguments and construction order (encoder, then decoder) as before G0, so the
+    # ADJSCC-Q initialisation for a given seed is bit-identical (tests/test_deepjsccq.py).
+    encoder, decoder = build_jscc(cfg, device)
     if wandb is not None:
-        wandb.config.update({"k": encoder.k, "split": split_info})
+        wandb.config.update({"k": encoder.k, "split": split_info, "arch": arch, "device": str(device)})
 
     x_calib, _ = next(iter(train_loader))
     encoder.calibrate_quantizer(
@@ -520,7 +547,9 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
     ))
     seeds = tuple(cfg.get("rs_uep", {}).get("seeds", [0, 1, 2]))
     rs_rows, rs_validation_rows = [], []
-    if skip_rs_sweep or oracle["channel_count"] != 16:
+    # The in-script sweep compares attention with oracle, so it needs an attention gate (G0).
+    rs_sweep_skipped = skip_rs_sweep or oracle["channel_count"] != 16 or not encoder.has_attention
+    if rs_sweep_skipped:
         print("Skipping the in-script RS sweep; run experiments/eval_rs_uep.py for the full comparison.")
     else:
         log_test_access("experiments.train_adjsccq_train_split", best_path,
@@ -548,7 +577,8 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
                 "split_seed": split_seed,
                 "k_over_n": cfg["model"]["k_over_n"],
                 "channels": oracle["channel_count"],
-                "rs_sweep_skipped": skip_rs_sweep or oracle["channel_count"] != 16,
+                "rs_sweep_skipped": rs_sweep_skipped,
+                "arch": arch,
                 "channel_seeds": list(seeds),
                 "erasure_rates": list(rates),
                 "oracle_source_split": "train",
@@ -571,6 +601,8 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         "validation_history": validation_history,
         "recipe": {"lr_schedule": lr_schedule, "grad_clip": grad_clip, "lr_min": lr_min,
                    "lr": cfg["train"]["lr"], "epochs": cfg["train"]["epochs"]},
+        "arch": arch,
+        "train_device": str(device),
         "rs_uep_validation": rs_validation_rows,
         "rs_uep_test": rs_rows,
     }
@@ -603,7 +635,7 @@ def main(config_path: str, data_dir: str, output_dir: str, val_size: int,
         _log_table(wandb, "oracle/channel_scores", oracle_rows)
         _log_table(wandb, "rs_uep/validation_sweep", rs_validation_rows)
         _log_table(wandb, "rs_uep/test_sweep", rs_rows)
-        artifact = wandb.Artifact("adjsccq-train-split-checkpoints", type="model")
+        artifact = wandb.Artifact(f"{arch}-train-split-checkpoints", type="model")
         artifact.add_file(best_path)
         artifact.add_file(final_path)
         artifact.add_file(oracle_path)
@@ -638,6 +670,10 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=None, help="override the config learning rate")
     parser.add_argument("--skip_rs_sweep", action="store_true",
                         help="train + oracle only; run experiments/eval_rs_uep.py for the sweep")
+    parser.add_argument("--arch", default=None, choices=sorted(ARCHITECTURES),
+                        help="override model.arch of the config (default: the config's, else adjsccq)")
+    parser.add_argument("--device", default="auto", choices=DEVICE_CHOICES,
+                        help="auto = CUDA if available else CPU (unchanged default); mps = Apple silicon")
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--wandb_project", default=DEFAULT_PROJECT)
     parser.add_argument("--wandb_name", default=None)
@@ -649,4 +685,5 @@ if __name__ == "__main__":
         seed_override=args.seed, split_seed=args.split_seed, epochs_override=args.epochs,
         k_over_n_override=args.k_over_n, skip_rs_sweep=args.skip_rs_sweep,
         lr_schedule=args.lr_schedule, grad_clip=args.grad_clip, lr_min=args.lr_min, lr_override=args.lr,
+        arch_override=args.arch, device_name=args.device,
     )

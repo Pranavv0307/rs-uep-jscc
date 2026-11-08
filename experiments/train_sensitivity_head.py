@@ -21,8 +21,8 @@ ranking, the static train-split ranking, and the closed-form proxies
 top-1 hit rate, within-image Spearman, R^2, and *protection regret* (dB of true
 damage in the true top-4 that the predicted top-4 fails to cover).
 
-    python -m experiments.train_sensitivity_head --checkpoint checkpoints/train_split_adjsccq/best_val.pth \\
-        --reference_ranking checkpoints/train_split_adjsccq/oracle_ranking.json \\
+    python -m experiments.train_sensitivity_head --checkpoint results/gpu/models/seed42/best_val.pth \\
+        --reference_ranking results/gpu/models/seed42/oracle_ranking.json \\
         --labels_dir results/phase1/head_labels --output_dir results/phase1/head --seeds 0,1,2,3,4
 """
 import argparse
@@ -34,7 +34,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from data.datasets import is_official_test, load_image_tensor
+from data.datasets import EVAL_DATASETS, is_official_test, load_eval_tensor
 from experiments import plotting, wandb_utils
 from experiments.model_io import encode_full, load_model_bundle
 from experiments.reproducibility import (
@@ -55,7 +55,9 @@ from models.adjsccq import SensitivityHead
 @torch.no_grad()
 def compute_labels(bundle, images: torch.Tensor, batch_size: int, progress=None) -> Dict[str, torch.Tensor]:
     snr_db = bundle.snr_db
-    parts = {"damage": [], "mean": [], "var": [], "attention": [], "clean_psnr": []}
+    parts = {"damage": [], "mean": [], "var": [], "clean_psnr": []}
+    if bundle.has_attention:  # models without attention gates (DeepJSCC-Q, G1) have no attention label
+        parts["attention"] = []
     starts = range(0, len(images), batch_size)
     for start in (progress(starts) if progress else starts):
         x = images[start:start + batch_size]
@@ -66,7 +68,8 @@ def compute_labels(bundle, images: torch.Tensor, batch_size: int, progress=None)
         parts["damage"].append(damage)
         parts["mean"].append(per_channel.mean(-1))
         parts["var"].append(per_channel.var(-1, unbiased=False))
-        parts["attention"].append(info["attn"]["af5_bottleneck"])
+        if "attention" in parts:
+            parts["attention"].append(info["attn"]["af5_bottleneck"])
         parts["clean_psnr"].append(clean)
     return {k: torch.cat(v).cpu() for k, v in parts.items()}
 
@@ -76,9 +79,10 @@ def get_labels(bundle, args, split: str, progress) -> Dict[str, torch.Tensor]:
     if os.path.exists(path) and not args.recompute:
         print(f"using cached labels {path}")
         return torch.load(path, weights_only=True)["labels"]
-    if is_official_test("cifar10", split):
+    if is_official_test(getattr(args, "dataset", "cifar10"), split):
         log_test_access("experiments.train_sensitivity_head", args.checkpoint, note="evaluating the sensitivity head")
-    images = load_image_tensor("cifar10", split, args.data_dir, args.max_images, bundle.split_seed)
+    images = load_eval_tensor(getattr(args, "dataset", "cifar10"), split, args.data_dir, args.max_images,
+                              bundle.split_seed)
     labels = compute_labels(bundle, images, args.batch_size, progress)
     os.makedirs(args.labels_dir, exist_ok=True)
     torch.save({"labels": labels, "checkpoint": args.checkpoint, "checkpoint_sha256": file_sha256(args.checkpoint),
@@ -109,13 +113,15 @@ def baseline_scores(labels: Dict[str, torch.Tensor], static_ranking: List[int], 
     n, channels = mean.shape
     static = np.zeros(channels)
     static[static_ranking] = np.arange(channels, 0, -1)
-    return {
+    scores = {
         "random": np.random.default_rng(seed).random((n, channels)),
         "static_train_ranking": np.tile(static, (n, 1)),
         "energy": var + mean ** 2,
         "variance": var,
-        "attention": labels["attention"].numpy(),
     }
+    if "attention" in labels:  # absent for models without attention gates (G1)
+        scores["attention"] = labels["attention"].numpy()
+    return scores
 
 
 # --------------------------------------------------------------------------
@@ -175,6 +181,8 @@ def main():
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--reference_ranking", required=True, help="train-split oracle_ranking.json (baseline)")
     parser.add_argument("--data_dir", default="./data")
+    parser.add_argument("--dataset", default="cifar10", choices=list(EVAL_DATASETS),
+                        help="librispeech for the speech models (S1)")
     parser.add_argument("--labels_dir", default="results/phase1/head_labels")
     parser.add_argument("--output_dir", default="results/phase1/head")
     parser.add_argument("--stage", default="all", choices=["all", "labels", "train"])
@@ -251,7 +259,7 @@ def main():
         comparison[name] = ranking_metrics(scores, val_np)
 
     # Cost check: the head must be a negligible part of the encoder (roadmap: < 2% of FLOPs).
-    dummy = torch.zeros(1, 3, bundle.image_size, bundle.image_size)
+    dummy = bundle.example_input()  # (1, 3, S, S) for images, (1, 1, L) for speech
     encoder_macs = count_macs(bundle.encoder.encoder, lambda: bundle.encoder.encoder(dummy, bundle.snr_db))
     head_macs = heads[best_seed].macs()
     cost = {"encoder_macs": encoder_macs, "head_macs": head_macs, "head_fraction_of_encoder": head_macs / encoder_macs,

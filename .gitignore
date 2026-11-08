@@ -1,61 +1,72 @@
-# local env
+# ---------------------------------------------------------------------------
+# Python environment and caches
+# ---------------------------------------------------------------------------
 .venv/
 venv/
 __pycache__/
 *.pyc
+.pytest_cache/
 
-# Jupyter
+# ---------------------------------------------------------------------------
+# Jupyter checkpoints
+# ---------------------------------------------------------------------------
 .ipynb_checkpoints/
 notebooks/*-checkpoint.ipynb
 pynbs/*-checkpoint.ipynb
 
-# datasets — never commit these
+# ---------------------------------------------------------------------------
+# Datasets: never commit (re-download with experiments.download_data /
+# experiments.prepare_speech_data)
+# ---------------------------------------------------------------------------
 data/cifar-10-batches-py/
 data/cifar-10-python.tar.gz
-cifar10_data/
+data/cifar-100-python/
+data/*.tar.gz
 data/*.zip
+data/kodak/
+data/stl10_binary/
+data/stl10*
+data/LibriSpeech/
+data/LibriSpeech_archives/
+data/librispeech_segments/
+cifar10_data/
 
-# checkpoints, logs, generated outputs — never commit these
+# ---------------------------------------------------------------------------
+# Local run outputs, weights and logs: never commit.
+# Small, publishable copies go to published_results/ via experiments.publish_results.
+# ---------------------------------------------------------------------------
 results/
+results/smoke*/
+checkpoints/
 *.pth
 *.pt
 *.ckpt
 
-# test cache
-.pytest_cache/
-
-# W&B local run mirrors — never commit these, regenerate every run
+# Weights & Biases local run mirrors (regenerated every run). The September 2026
+# mirrors that were committed early are kept under archive/ for the record.
 wandb/
 wandb_logs/
 
-# OS/editor junk
-.DS_Store
-.vscode/
+# ---------------------------------------------------------------------------
+# Credentials and local tooling: never commit
+# ---------------------------------------------------------------------------
+.kaggle/
+kaggle.json
+.env
+*.env
+.netrc
+.vendor/
 
-#results
-results/
-
+# ---------------------------------------------------------------------------
+# Personal scratch files and folders (kept local)
+# ---------------------------------------------------------------------------
 week1_execution_plan.md
-
-# local untracked files
 amritape/
 images/
 scratch_eval.py
 
-# credentials and local tooling: never commit
-.kaggle/
-.env
-*.env
-.vendor/
-kaggle.json
-.netrc
-.pytest_cache/
-
-# datasets downloaded by experiments.download_data
-data/*.tar.gz
-data/cifar-100-python/
-data/kodak/
-data/stl10_binary/
-data/stl10*
-wandb/
-results/smoke*/
+# ---------------------------------------------------------------------------
+# OS / editor
+# ---------------------------------------------------------------------------
+.DS_Store
+.vscode/

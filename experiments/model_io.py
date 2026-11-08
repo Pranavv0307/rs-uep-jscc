@@ -1,24 +1,40 @@
-"""Load trained ADJSCC-Q models (optionally with an inpainting head) and run them.
+"""Load trained JSCC models (optionally with an inpainting head) and run them.
 
 A *bundle* is everything the receiver and transmitter need: the encoder (with
 its quantizer), the decoder, an optional :class:`LatentInpainter`, and the
 config stored in the checkpoint. All evaluation scripts go through
 :func:`reconstruct`, so a model with an inpainter is evaluated exactly like one
 without, just with the extra receiver-side step.
+
+G0: the architecture is read from ``config["model"]["arch"]`` through
+``models/registry.py`` (ADJSCC-Q when absent, i.e. every pre-G0 checkpoint), so
+the same bundle serves ADJSCC-Q and DeepJSCC-Q. Scripts must use the bundle
+properties below (``channels``, ``has_attention``, ``arch``) rather than reaching
+into model internals such as ``encoder.encoder.af5``.
 """
 from dataclasses import dataclass
 from typing import Optional
 
 import torch
+import torch.nn as nn
 
-from models.adjsccq import ADJSCCQDecoder, ADJSCCQEncoder, NOMINAL_SNR_DB_IDENTITY, SensitivityHead
+from models.adjsccq import NOMINAL_SNR_DB_IDENTITY, SensitivityHead
 from models.inpainting import LatentInpainter
+from models.registry import build_jscc, model_arch, model_modality
+
+
+def _symbols_per_channel(encoder: nn.Module, cfg: dict) -> int:
+    """Latent symbols per channel: the speech models report it; image models use (S/4)^2 as before."""
+    steps = getattr(encoder, "symbols_per_channel", None)
+    if steps is not None:
+        return int(steps)
+    return (int(cfg["model"]["image_size"]) // 4) ** 2
 
 
 @dataclass
 class ModelBundle:
-    encoder: ADJSCCQEncoder
-    decoder: ADJSCCQDecoder
+    encoder: nn.Module   # any registered encoder (models/registry.py)
+    decoder: nn.Module   # its decoder
     inpainter: Optional[LatentInpainter]
     config: dict
     path: str
@@ -26,16 +42,37 @@ class ModelBundle:
     split_seed: int = 42
 
     @property
+    def arch(self) -> str:
+        return model_arch(self.config)
+
+    @property
+    def has_attention(self) -> bool:
+        """True when the model has a bottleneck attention gate (the ``attention`` importance source)."""
+        return bool(getattr(self.encoder, "has_attention", False))
+
+    @property
     def channels(self) -> int:
-        return self.encoder.encoder.af5.num_channels
+        return self.encoder.num_channels
+
+    @property
+    def modality(self) -> str:
+        """``image`` (inputs (B, 3, H, W)) or ``speech`` (inputs (B, 1, L))."""
+        return model_modality(self.config)
 
     @property
     def image_size(self) -> int:
+        """Image models only."""
         return int(self.config["model"]["image_size"])
 
     @property
     def symbols_per_channel(self) -> int:
-        return (self.image_size // 4) ** 2
+        return _symbols_per_channel(self.encoder, self.config)
+
+    def example_input(self, batch: int = 1) -> torch.Tensor:
+        """A zero input of the shape the encoder expects (e.g. for counting MACs)."""
+        if self.modality == "speech":
+            return torch.zeros(batch, 1, self.encoder.segment_length)
+        return torch.zeros(batch, 3, self.image_size, self.image_size)
 
     @property
     def snr_db(self) -> float:
@@ -56,13 +93,11 @@ def _torch_load(path: str, device):
 
 
 def build_models(cfg: dict, device):
-    encoder = ADJSCCQEncoder(
-        k_over_n=cfg["model"]["k_over_n"],
-        image_size=cfg["model"]["image_size"],
-        num_levels=cfg["quantizer"]["num_levels"],
-    ).to(device)
-    decoder = ADJSCCQDecoder(k=encoder.k, image_size=cfg["model"]["image_size"]).to(device)
-    return encoder, decoder
+    """``(encoder, decoder)`` of the architecture named in ``cfg`` (ADJSCC-Q by default).
+
+    Kept under this name because ``experiments/train_highres.py`` imports it.
+    """
+    return build_jscc(cfg, device)
 
 
 def load_model_bundle(path: str, device) -> ModelBundle:
@@ -74,8 +109,8 @@ def load_model_bundle(path: str, device) -> ModelBundle:
     decoder.load_state_dict(checkpoint["decoder"])
     inpainter = None
     if "inpainter" in checkpoint:
-        channels = encoder.encoder.af5.num_channels
-        spc = (cfg["model"]["image_size"] // 4) ** 2
+        channels = encoder.num_channels
+        spc = _symbols_per_channel(encoder, cfg)
         meta = checkpoint.get("inpainter_config", {})
         inpainter = LatentInpainter(channels, spc, meta.get("heads", 4), meta.get("layers", 2)).to(device)
         inpainter.load_state_dict(checkpoint["inpainter"])
@@ -92,8 +127,11 @@ def load_sensitivity_head(path: str, device) -> SensitivityHead:
 
 
 @torch.no_grad()
-def encode_full(encoder: ADJSCCQEncoder, x: torch.Tensor, snr_db: float):
-    """Latent ``z`` (continuous), hard-quantised ``z_q``, byte indices, attention gates."""
+def encode_full(encoder: nn.Module, x: torch.Tensor, snr_db: float):
+    """Latent ``z`` (continuous), hard-quantised ``z_q``, byte indices, attention gates.
+
+    ``attn`` is an empty dict for a model without attention (DeepJSCC-Q).
+    """
     z, attn = encoder.encoder(x, snr_db, return_attn=True)
     z_q, idx = encoder.quantizer(z)
     return {"z": z, "z_q": z_q, "idx": idx, "attn": attn}

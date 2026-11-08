@@ -14,7 +14,7 @@ bottleneck attention gate of the same channel, then measures
 Outputs the left panel (scatter) and right panel (sorted oracle damage bars) as
 vector+PNG figures, plus raw arrays for re-plotting.
 
-    python -m experiments.attention_vs_damage --checkpoint checkpoints/train_split_adjsccq/best_val.pth \\
+    python -m experiments.attention_vs_damage --checkpoint results/gpu/models/seed42/best_val.pth \\
         --split val --max_images 2000 --output_dir results/phase1/attention
 """
 import argparse
@@ -23,7 +23,7 @@ import os
 import numpy as np
 import torch
 
-from data.datasets import is_official_test, load_image_tensor
+from data.datasets import EVAL_DATASETS, is_official_test, load_eval_tensor
 from experiments import plotting, wandb_utils
 from experiments.model_io import encode_full, load_model_bundle
 from experiments.reproducibility import build_provenance, log_test_access, seed_everything, write_json
@@ -35,6 +35,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--data_dir", default="./data")
+    parser.add_argument("--dataset", default="cifar10", choices=list(EVAL_DATASETS),
+                        help="librispeech for the speech models (S1)")
     parser.add_argument("--split", default="val")
     parser.add_argument("--max_images", type=int, default=2000)
     parser.add_argument("--batch_size", type=int, default=250)
@@ -47,9 +49,12 @@ def main():
     seed_everything(args.global_seed)
     device = torch.device("cpu")
     bundle = load_model_bundle(args.checkpoint, device)
-    if is_official_test("cifar10", args.split):
+    if not bundle.has_attention:
+        raise SystemExit(f"{args.checkpoint} is arch={bundle.arch!r}, which has no attention gate, so there is "
+                         "nothing to correlate. Use experiments.feature_saliency for the latent proxies.")
+    if is_official_test(args.dataset, args.split):
         log_test_access("experiments.attention_vs_damage", args.checkpoint)
-    images = load_image_tensor("cifar10", args.split, args.data_dir, args.max_images, bundle.split_seed)
+    images = load_eval_tensor(args.dataset, args.split, args.data_dir, args.max_images, bundle.split_seed)
 
     scores = {"attention": [], "energy": [], "variance": [], "l1": []}
     damages = []
@@ -105,7 +110,7 @@ def main():
     np.savez_compressed(os.path.join(args.output_dir, "attention_vs_damage.npz"), damage=damage, **scores)
     write_json(os.path.join(args.output_dir, "attention_vs_damage.json"), {
         "metadata": build_provenance(args=args, checkpoint_path=args.checkpoint, global_seed=args.global_seed,
-                                     device=device, split_info={"dataset": "cifar10", "split": args.split}),
+                                     device=device, split_info={"dataset": args.dataset, "split": args.split}),
         "stats": stats, "insights": notes})
 
     figures = plotting.plot_scatter(

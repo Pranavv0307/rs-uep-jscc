@@ -53,7 +53,27 @@ def load_image_tensor(name: str, split: str, data_dir: str, max_images: Optional
 
 
 def is_official_test(name: str, split: str) -> bool:
-    return name == "cifar10" and split == "test"
+    # LibriSpeech test-clean is the speech study's held-out test split (S1, AD-15).
+    return name in ("cifar10", "librispeech") and split == "test"
+
+
+SPEECH_DATASETS = ("librispeech",)
+EVAL_DATASETS = DATASETS_32 + SPEECH_DATASETS
+
+
+def load_eval_tensor(name: str, split: str, data_dir: str, max_items: Optional[int] = None,
+                     split_seed: int = DEFAULT_SPLIT_SEED) -> torch.Tensor:
+    """Evaluation items of any modality: images ``(N, 3, 32, 32)`` or speech segments ``(N, 1, L)``.
+
+    Image datasets go through ``load_image_tensor`` unchanged. ``librispeech`` reads the
+    segment cache of ``data/speech.py`` (its split is fixed by LibriSpeech; ``split_seed``
+    is ignored).
+    """
+    if name in SPEECH_DATASETS:
+        from data.speech import load_speech_tensor  # lazy: keeps image-only runs free of the speech module
+
+        return load_speech_tensor(split, data_dir, max_items)
+    return load_image_tensor(name, split, data_dir, max_items, split_seed)
 
 
 # --------------------------------------------------------------------------

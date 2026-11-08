@@ -21,7 +21,7 @@ fixed grid of erasure rates, averaged over channel- and packet-level drops. The
 oracle ranking is recomputed for the fine-tuned model on the 40k training split
 (the encoder may have moved), and everything is saved next to the checkpoint.
 
-    python -m experiments.train_erasure_robust --init_checkpoint checkpoints/train_split_adjsccq/best_val.pth \\
+    python -m experiments.train_erasure_robust --init_checkpoint results/gpu/models/seed42/best_val.pth \\
         --output_dir results/phase2/robust_channel --drop_unit channel --p_max 0.5
 """
 import argparse
