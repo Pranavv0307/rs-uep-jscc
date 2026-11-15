@@ -32,17 +32,27 @@ from coding.rs_pipeline import (
     side_info_bytes,
 )
 from experiments.importance_sources import compute_orders
-from experiments.metrics import lpips_per_image, ms_ssim, quality_db_per_item, si_sdr_db_per_item, ssim
+from experiments.metrics import (
+    is_text,
+    lpips_per_image,
+    ms_ssim,
+    quality_db_per_item,
+    si_sdr_db_per_item,
+    ssim,
+    word_accuracy_per_item,
+)
 from experiments.model_io import ModelBundle, encode_full, reconstruct
 
 INTERLEAVE_TAG = {"sequential": "", "round_robin": "#rr"}
 
 # Metrics aggregated across channel seeds (mean / std / 95% CI). Rows carry ``ssim_mean`` for
-# images and ``si_sdr_db_mean`` for speech; missing metrics are skipped by aggregate_over_seeds.
-# For speech the ``psnr_db_*`` fields hold per-segment SNR (experiments/metrics.quality_db_per_item).
+# images, ``si_sdr_db_mean`` for speech and ``word_acc_mean`` for text; missing metrics are skipped
+# by aggregate_over_seeds. For speech the ``psnr_db_*`` fields hold per-segment SNR, for text the
+# per-window character accuracy in percent (experiments/metrics.quality_db_per_item).
 SUMMARY_METRICS = (
     "psnr_db_mean_per_image", "psnr_db_median", "psnr_db_p5", "ssim_mean", "ms_ssim_mean", "lpips_mean",
     "failed_symbol_fraction", "any_block_failure_rate", "realized_erasure_rate", "si_sdr_db_mean",
+    "word_acc_mean",
 )
 
 
@@ -116,17 +126,20 @@ class CellAccumulator:
     def __init__(self, spec: MethodSpec, scheme: CodingScheme, channels: int, constants: dict):
         self.spec, self.scheme, self.channels, self.constants = spec, scheme, channels, constants
         self.psnr: List[np.ndarray] = []
-        self.ssim_sum = self.ms_ssim_sum = self.lpips_sum = self.si_sdr_sum = 0.0
+        self.ssim_sum = self.ms_ssim_sum = self.lpips_sum = self.si_sdr_sum = self.word_acc_sum = 0.0
         self.has_ms, self.has_lpips = False, False
-        self.audio = False
+        self.audio = self.text = False
         self.images = self.failed_symbols = self.erased = self.total = self.images_with_failure = 0
         self.block_failures = np.zeros(len(scheme.tiers), dtype=np.int64)
 
     def add(self, recon, x, decoded, erased, total, extra_metrics: bool = False):
-        psnr = quality_db_per_item(recon, x)   # PSNR for images (unchanged), SNR for speech
+        psnr = quality_db_per_item(recon, x)   # PSNR for images (unchanged), SNR for speech, char acc % for text
         self.psnr.append(psnr.cpu().numpy())
         if x.dim() == 4:
             self.ssim_sum += ssim(recon, x).sum().item()
+        elif is_text(x):
+            self.text = True
+            self.word_acc_sum += word_accuracy_per_item(recon, x).sum().item()
         else:
             self.audio = True
             self.si_sdr_sum += si_sdr_db_per_item(recon, x).sum().item()
@@ -179,6 +192,9 @@ class CellAccumulator:
         if self.audio:  # no SSIM for waveforms; SI-SDR instead (key order unchanged for images)
             del row["ssim_mean"]
             row["si_sdr_db_mean"] = self.si_sdr_sum / self.images
+        if self.text:   # no SSIM for symbol sequences; word accuracy (%) instead (T1, AD-24)
+            del row["ssim_mean"]
+            row["word_acc_mean"] = self.word_acc_sum / self.images
         if self.has_ms:
             row["ms_ssim_mean"] = self.ms_ssim_sum / self.images
         if self.has_lpips:

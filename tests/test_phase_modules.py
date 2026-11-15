@@ -288,6 +288,8 @@ def test_pipeline_steps_are_unique_well_formed_and_dry():
     "experiments.compare_architectures", "models.registry", "models.deepjsccq",
     "experiments.train_speech_jscc", "experiments.prepare_speech_data", "experiments.eval_speech_perceptual",
     "models.speech_jscc", "data.speech",
+    "experiments.train_text_jscc", "experiments.prepare_text_data", "experiments.eval_text_examples",
+    "models.text_jscc", "data.text",
 ])
 def test_every_script_imports_cleanly(module):
     assert importlib.import_module(module) is not None

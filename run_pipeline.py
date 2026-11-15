@@ -13,9 +13,10 @@ Phases (in order): verify, phase1 (multi-seed + Track A), phase2 (Track B),
 phase3 (Track C), phase4 (Track D), final (test tables + report).
 
 Extension phases (run only when named; ``--phase all`` keeps meaning the roadmap):
-g1 (DeepJSCC-Q attention ablation, docs/03_runbooks/G1_DEEPJSCCQ_ATTENTION_ABLATION_RUNBOOK_MAC_MPS.md) and speech
-(1-D ADJSCC-Q / DeepJSCC-Q on LibriSpeech, docs/03_runbooks/S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md). Use
-``--train_device mps`` to train on Apple silicon.
+g1 (DeepJSCC-Q attention ablation, docs/03_runbooks/G1_DEEPJSCCQ_ATTENTION_ABLATION_RUNBOOK_MAC_MPS.md), speech
+(1-D ADJSCC-Q / DeepJSCC-Q on LibriSpeech, docs/03_runbooks/S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md) and text
+(character-level ADJSCC-Q / DeepJSCC-Q on text8, docs/03_runbooks/T1_TEXT_TEXT8_STUDY_RUNBOOK_MAC_MPS.md). Use
+``--train_device mps`` to train on Apple silicon (``cuda`` on an NVIDIA GPU).
 
 Rules baked in (roadmap section 4): tuning (scheme selection, checkpoint choice)
 uses the validation split; the test split is evaluated only in ``final``, once,
@@ -34,7 +35,7 @@ from typing import Dict, List, Optional
 
 PHASES = ("verify", "phase1", "phase2", "phase3", "phase4", "final")
 # Run only when asked for by name; not part of ``--phase all`` (docs/02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md, AD-10).
-EXTENSION_PHASES = ("g1", "speech")
+EXTENSION_PHASES = ("g1", "speech", "text")
 
 # G1 (attention ablation): DeepJSCC-Q init seeds. Same seeds as the converged ADJSCC-Q models (minus 21, kept
 # as the spare), so each pair also shares its data order (loader seed = seed + 1). AD-06.
@@ -55,6 +56,13 @@ ADJSCC_SELECTION = ("published_results/gpu/phase1/val_sweep/selected_schemes.jso
 SPEECH_ARCHS = ("adjsccq1d", "deepjsccq1d")
 SPEECH_SEEDS = (42, 100, 7)
 SPEECH_CONFIGS = {arch: f"configs/speech_{arch}.yaml" for arch in SPEECH_ARCHS}
+
+# Text study T1: both character-level architectures, 3 init seeds each (AD-26), same seeds as speech.
+TEXT_ARCHS = ("adjsccq_text", "deepjsccq_text")
+TEXT_SEEDS = (42, 100, 7)
+TEXT_CONFIGS = {"adjsccq_text": "configs/text_adjsccq.yaml", "deepjsccq_text": "configs/text_deepjsccq.yaml"}
+# Text decision thresholds (AD-28, PENDING): gains and damages are percentage points of character accuracy.
+TEXT_DECISION_RULE = ("--min_gain_db", "2.0", "--equivalence_margin_db", "0.5")
 
 
 @dataclass
@@ -304,6 +312,7 @@ def build_steps(cfg: argparse.Namespace) -> List[Step]:
     ]
     steps += g1_steps(cfg, mod, sweep, best, ranking, seeds)
     steps += speech_steps(cfg, mod, sweep, best, ranking, seeds)
+    steps += text_steps(cfg, mod, sweep, best, ranking, seeds)
     return steps
 
 
@@ -501,6 +510,103 @@ def speech_steps(cfg, mod, sweep, best, ranking, seeds) -> List[Step]:
     return steps
 
 
+def text_steps(cfg, mod, sweep, best, ranking, seeds) -> List[Step]:
+    """T1: does sensitivity-aware UEP carry over to text, with and without attention?
+
+    The speech protocol, step for step, on text8 character windows: seed 42 of each
+    architecture gets A.2, A.3 and the validation scheme selection; the other seeds reuse that
+    selection; every test sweep uses 5 channel seeds and all test windows. Quality is character
+    accuracy (%), so "dB" in shared outputs reads as percentage points. See
+    docs/03_runbooks/T1_TEXT_TEXT8_STUDY_RUNBOOK_MAC_MPS.md.
+    """
+    data, r = cfg.data_dir, cfg.results
+    device = getattr(cfg, "train_device", "auto")
+    root = f"{r}/text"
+    cache = f"{data}/text8_windows"
+    common = ("--dataset", "text8")
+
+    def train(name, description, arch, folder, *extra):
+        return Step(name, "text", description,
+                    mod("train_text_jscc", "--config", TEXT_CONFIGS[arch], "--arch", arch, "--device", device,
+                        "--data_dir", data, "--output_dir", folder, *extra),
+                    [best(folder), ranking(folder)], True)
+
+    steps = [
+        Step("text_data", "text", "Download text8 (31 MB zip) and build the 2,048-character window caches",
+             mod("prepare_text_data", "--download", "--build", "--data_dir", data),
+             [f"{cache}/{split}.npy" for split in ("train", "val", "test")]),
+        train("text_smoke_train", "Smoke test: 2-epoch adjsccq_text run on 2,000 windows (numbers are NOT quoted)",
+              "adjsccq_text", f"{root}/smoke_train", "--seed", 7, "--epochs", 2, "--max_train", 2000,
+              "--oracle_max_items", 500),
+    ]
+    for arch in TEXT_ARCHS:
+        family = f"{root}/{arch}"
+        primary = f"{family}/seed42"
+        selection = f"{primary}/val_sweep/selected_schemes.json"
+        attention = ",attention" if arch == "adjsccq_text" else ""
+        for seed in TEXT_SEEDS:
+            steps.append(train(f"text_train_{arch}_seed{seed}",
+                               f"Train {arch} on text8 from scratch, init seed {seed} (recipe v1, cross-entropy)",
+                               arch, f"{family}/seed{seed}", "--seed", seed))
+        runs = [token for seed in TEXT_SEEDS for token in ("--run", f"seed{seed}={family}/seed{seed}")]
+        steps += [
+            Step(f"text_multiseed_{arch}", "text", f"{arch}: damage profiles across init seeds",
+                 mod("multiseed_analysis", *runs, "--output_dir", f"{family}/multiseed"),
+                 [f"{family}/multiseed/multiseed.json"], True),
+            Step(f"text_saliency_{arch}", "text", f"A.2 on {arch}: latent proxies vs true damage (text8 val)",
+                 mod("feature_saliency", "--checkpoint", best(primary), "--reference_ranking", ranking(primary),
+                     *common, "--data_dir", data, "--output_dir", f"{primary}/saliency"),
+                 [f"{primary}/saliency/saliency.json"], True),
+            Step(f"text_head_{arch}", "text", f"A.3 on {arch}: label train + val windows, train the head",
+                 mod("train_sensitivity_head", "--checkpoint", best(primary), "--reference_ranking", ranking(primary),
+                     *common, "--data_dir", data, "--labels_dir", f"{primary}/head_labels",
+                     "--output_dir", f"{primary}/head", "--seeds", seeds),
+                 [f"{primary}/head/sensitivity_head.pt"], True),
+            sweep(f"text_val_sweep_{arch}", "text", f"{arch}: validation sweep, ALL schemes (text8 val)",
+                  best(primary), "val", "oracle,predicted,energy,l1" + attention, f"{primary}/val_sweep", "val_sweep",
+                  rank=ranking(primary), head=f"{primary}/head/sensitivity_head.pt", seeds_arg="0,1,2",
+                  extra=(*common, "--include_random_control", "--include_no_rs")),
+            Step(f"text_select_{arch}", "text", f"{arch}: select the tier allocation on its validation sweep",
+                 mod("select_scheme", "--sweep", f"{primary}/val_sweep/val_sweep.json", "--output", selection),
+                 [selection]),
+            sweep(f"text_final_{arch}_seed42", "text", f"TEST sweep, {arch} seed 42 (text8 test, 5 seeds)",
+                  best(primary), "test", "oracle,predicted,energy,l1" + attention, f"{primary}/test_sweep",
+                  "test_sweep", rank=ranking(primary), head=f"{primary}/head/sensitivity_head.pt",
+                  schemes=f"{{selected:{selection}}}", extra=(*common, "--include_random_control", "--include_no_rs")),
+        ]
+        for seed in TEXT_SEEDS[1:]:
+            folder = f"{family}/seed{seed}"
+            steps.append(sweep(f"text_final_{arch}_seed{seed}", "text",
+                               f"TEST sweep, {arch} seed {seed} (seed-42 validation selection)",
+                               best(folder), "test", "oracle,energy" + attention, f"{folder}/test_sweep", "test_sweep",
+                               rank=ranking(folder), schemes=f"{{selected:{selection}}}",
+                               extra=(*common, "--include_random_control", "--include_no_rs")))
+        steps.append(Step(f"text_examples_{arch}", "text",
+                          f"Word accuracy, bits/char and readable example passages, {arch} seed 42 "
+                          "(500 test windows, channel seed 0)",
+                          mod("eval_text_examples", "--checkpoint", best(primary), "--oracle_ranking_file",
+                              ranking(primary), "--data_dir", data, "--split", "test", "--selection", selection,
+                              "--sources", "oracle,energy" + attention, "--output_dir", f"{primary}/examples"),
+                          [f"{primary}/examples/text_examples.json"]))
+    primary = f"{root}/adjsccq_text/seed42"
+    steps.append(Step("text_attention_vs_damage", "text", "adjsccq_text: attention vs true damage (text8 val)",
+                      mod("attention_vs_damage", "--checkpoint", best(primary), *common, "--data_dir", data,
+                          "--split", "val", "--output_dir", f"{primary}/attention"),
+                      [f"{primary}/attention/attention_vs_damage.json"], True))
+    tokens = []
+    for arch in TEXT_ARCHS:
+        for seed in TEXT_SEEDS:
+            folder = f"{root}/{arch}/seed{seed}"
+            tokens += ["--model", f"{arch}/seed{seed}={folder}",
+                       "--sweep", f"{arch}/seed{seed}={folder}/test_sweep/test_sweep.json"]
+    steps.append(Step("text_compare", "text", "Text: adjsccq_text vs deepjsccq_text under the frozen decision rule "
+                      "(AD-28 thresholds, percentage points)",
+                      mod("compare_architectures", *tokens, "--reference_family", "adjsccq_text", *TEXT_DECISION_RULE,
+                          "--output_dir", f"{root}/compare"),
+                      [f"{root}/compare/compare.json"]))
+    return steps
+
+
 def resolve(command: List[str], dry_run: bool) -> List[str]:
     """Replace ``{selected:<file>}`` by the schemes recorded on the validation sweep."""
     out = []
@@ -548,7 +654,8 @@ def main():
                         help="folder with best_val.pth + oracle_ranking.json of the seed-42 model")
     parser.add_argument("--highres_dir", default=None, help="folder of high-res images for the Kodak fallback")
     parser.add_argument("--train_device", default="auto", choices=["auto", "cpu", "cuda", "mps"],
-                        help="device for the g1 training steps (auto = CUDA if available, else CPU; mps = Apple)")
+                        help="device for the g1 / speech / text training steps (auto = CUDA if available, else CPU; "
+                             "mps = Apple)")
     cfg = parser.parse_args()
     if cfg.train_device == "mps":
         # Ops without an MPS kernel fall back to the CPU instead of crashing; children inherit this (AD-08).

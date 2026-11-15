@@ -182,7 +182,7 @@ def main():
     parser.add_argument("--reference_ranking", required=True, help="train-split oracle_ranking.json (baseline)")
     parser.add_argument("--data_dir", default="./data")
     parser.add_argument("--dataset", default="cifar10", choices=list(EVAL_DATASETS),
-                        help="librispeech for the speech models (S1)")
+                        help="librispeech for the speech models (S1), text8 for the text models (T1)")
     parser.add_argument("--labels_dir", default="results/phase1/head_labels")
     parser.add_argument("--output_dir", default="results/phase1/head")
     parser.add_argument("--stage", default="all", choices=["all", "labels", "train"])

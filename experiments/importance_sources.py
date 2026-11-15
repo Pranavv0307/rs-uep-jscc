@@ -12,7 +12,8 @@ source                 definition                                             ne
 ``variance``           variance of z per channel                              latent only
 ``l1``                 mean |z| per channel = (1/2) mean |d||z||^2 / dz|      latent only
                        (analytic gradient saliency of roadmap A.2)
-``taylor``             |sum_hw (dMSE/dz) * z| per channel: first-order        decoder copy + the image
+``taylor``             |sum_hw (dLoss/dz) * z| per channel: first-order       decoder copy + the image
+                       (Loss = MSE; cross-entropy for text, T1)
                        estimate of the damage of zeroing the channel
 ``predicted``          trained SensitivityHead (A.3)                          encoder + tiny head
 ``oracle_perimage``    true per-image LOO damage                              image + decoder
@@ -29,7 +30,7 @@ from typing import Dict, Optional, Sequence
 
 import torch
 
-from experiments.metrics import per_item_mse
+from experiments.metrics import per_item_loss
 from experiments.model_io import ModelBundle, encode_full
 from experiments.sensitivity import loo_damage_batch
 
@@ -51,7 +52,7 @@ def taylor_scores(bundle: ModelBundle, z_q: torch.Tensor, x: torch.Tensor, snr_d
             recon = bundle.decoder(latent, snr_db)
         else:
             recon = bundle.decoder(latent, snr_db, spatial_hw=spatial_hw)
-        per_image = per_item_mse(recon, x)  # identical to mean over [1, 2, 3] for images
+        per_image = per_item_loss(recon, x)  # MSE (identical to mean over [1, 2, 3] for images); CE for text
         (gradient,) = torch.autograd.grad(per_image.sum(), latent)
     contribution = (gradient * latent.detach()).reshape(latent.shape[0], channels, -1).sum(dim=-1)
     return contribution.abs()

@@ -36,7 +36,7 @@ def main():
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--data_dir", default="./data")
     parser.add_argument("--dataset", default="cifar10", choices=list(EVAL_DATASETS),
-                        help="librispeech for the speech models (S1)")
+                        help="librispeech for the speech models (S1), text8 for the text models (T1)")
     parser.add_argument("--split", default="val")
     parser.add_argument("--max_images", type=int, default=2000)
     parser.add_argument("--batch_size", type=int, default=250)

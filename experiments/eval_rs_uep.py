@@ -39,7 +39,7 @@ from coding.erasure_channel import sample_master_mask
 from coding.interleave import packet_mask_from_timeline
 from coding.rs_pipeline import SCHEME_CANDIDATES
 from coding.scaling import scheme_catalog
-from data.datasets import EVAL_DATASETS, is_official_test, load_eval_tensor
+from data.datasets import EVAL_DATASETS, is_official_test, load_eval_tensor, tensor_modality
 from experiments import wandb_utils
 from experiments.model_io import load_model_bundle, load_sensitivity_head
 from experiments.pipeline_core import (
@@ -64,6 +64,11 @@ from experiments.reproducibility import (
 
 DEFAULT_ERASURE_RATES = (0.0, 0.1, 0.2, 0.3, 0.35, 0.4, 0.45, 0.5)
 ORACLE_KEYS = ("ranking_channels_most_to_least_important", "oracle_ranking_channels")
+QUALITY_METRICS = {
+    "image": "per-image PSNR (dB)",
+    "speech": "per-segment SNR (dB), stored in the psnr_db_* fields",
+    "text": "per-window character accuracy (%), stored in the psnr_db_* fields; gains/damages in percentage points",
+}
 MODULE = "experiments.eval_rs_uep"
 
 
@@ -167,8 +172,9 @@ def build_parser(description=__doc__):
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--data_dir", default="./data")
     parser.add_argument("--dataset", default="cifar10", choices=list(EVAL_DATASETS),
-                        help="librispeech = speech segments (S1); needs a speech checkpoint")
-    parser.add_argument("--split", default="val", help="cifar10, librispeech: train|val|test; others: train|test")
+                        help="librispeech = speech segments (S1), text8 = text windows (T1); needs a checkpoint "
+                             "of the same modality")
+    parser.add_argument("--split", default="val", help="cifar10, librispeech, text8: train|val|test; others: train|test")
     parser.add_argument("--split_seed", type=int, default=None, help="default: the checkpoint's own split seed")
     parser.add_argument("--batch_size", type=int, default=250)
     parser.add_argument("--max_images", type=int, default=None, help="default: the whole split")
@@ -218,7 +224,7 @@ def prepare_data(args, sources=None, note: str = ""):
             raise SystemExit(f"importance '{source}' needs a ranking named '{source[7:]}' "
                              "(--rankings name=path / --oracle_ranking_file)")
     images = load_eval_tensor(args.dataset, args.split, args.data_dir, args.max_images, split_seed)
-    if (images.dim() == 3) != (bundle.modality == "speech"):
+    if tensor_modality(images) != bundle.modality:
         raise SystemExit(f"dataset {args.dataset!r} does not match the checkpoint's modality ({bundle.modality})")
     head = load_sensitivity_head(args.head_checkpoint, device) if args.head_checkpoint else None
     try:
@@ -243,8 +249,7 @@ def evaluation_metadata(args, data: dict, extra: dict) -> dict:
         "images_per_seed": len(data["images"]),
         "is_full_test_set": bool(is_official_test(args.dataset, args.split) and (
             len(data["images"]) >= 10_000 if args.dataset == "cifar10" else args.max_images is None)),
-        "quality_metric": ("per-segment SNR (dB), stored in the psnr_db_* fields" if data["bundle"].modality == "speech"
-                           else "per-image PSNR (dB)"),
+        "quality_metric": QUALITY_METRICS[data["bundle"].modality],
         "channels": bundle.channels, "packet_size": args.packet_size, "overhead": args.overhead,
         "clean_psnr_mean": float(np.mean(data["prep"]["clean_psnr"])),
         "side_info_rule": "0 B for uniform/no_rs, one byte per channel for sorted methods",

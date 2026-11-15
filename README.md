@@ -68,6 +68,7 @@ The question changed twice. Each change came from a result, not a plan.
 | 6 Nov | Literature review | About 120 works across six literatures (see `docs/06_literature_review/`) | **Second surprise:** unequal RS over packets is 30 years old (PET 1996, ULP 2000) and Grad-FEC (ICIP 2023) already does importance-ranked RS on learned features. The novelty is in the **measurements**, not the coding machinery. |
 | 6 to 7 Nov | **G1 ablation** (DeepJSCC-Q, Mac MPS) | ADJSCC-Q with all 10 attention modules removed, same protocol, 4 seeds | Tests whether the channel imbalance is an attention artefact. It is not: the imbalance and the UEP gain remain without attention. |
 | 6 Nov | S1 speech study | 1-D models on LibriSpeech, same 1024-byte latent | Code only; not run. |
+| 16 Nov | T1 text study | Character-level models on text8 (2,048 characters per window), same 1024-byte latent, character accuracy | Code only; not run. |
 
 **In short:** the project started as "use attention to decide RS protection". It became "attention does not
 tell you what matters. Here is what does (leave-one-out damage, latent energy, a 2,048-MAC head), the imbalance
@@ -92,6 +93,7 @@ Sub-questions, each answered by one part of the code:
 | Bursty losses, high resolution, bandwidth ratio, digital codecs? | `eval_burst.py`, `eval_kodak.py`, the k/n sweep, `eval_digital_baseline.py` |
 | Is the effect specific to ADJSCC's attention? (G1) | `models/deepjsccq.py`, `experiments/compare_architectures.py` |
 | Does it carry over to speech? (S1, not run) | `models/speech_jscc.py`, `experiments/train_speech_jscc.py` |
+| Does it carry over to a discrete source, text? (T1, not run) | `models/text_jscc.py`, `experiments/train_text_jscc.py` |
 
 ## 4. System in one picture
 
@@ -250,6 +252,7 @@ rs-uep-jscc/
 │   ├── deepjsccq.py              DeepJSCC-Q: ADJSCC-Q without attention (G1 ablation)
 │   ├── inpainting.py             masked-latent transformer that fills unrecovered symbols (Track B.2)
 │   ├── speech_jscc.py            1-D ADJSCC-Q / DeepJSCC-Q for speech (S1)
+│   ├── text_jscc.py              character-level ADJSCC-Q / DeepJSCC-Q for text8 (T1)
 │   ├── registry.py               architecture name -> (encoder, decoder) builder
 │   └── channel.py                AWGN layer (used by the backbone unit tests; not by the erasure study)
 │
@@ -257,6 +260,7 @@ rs-uep-jscc/
 │   ├── splits.py                 the fixed 40k/10k/10k CIFAR-10 split
 │   ├── datasets.py               CIFAR-10/100, STL-10, Kodak, folder crops; in-memory evaluation tensors
 │   ├── speech.py                 LibriSpeech download, segmentation and cache (S1)
+│   ├── text.py                   text8 download, 2,048-character windows and cache (T1)
 │   └── cifar10.py                simple CIFAR-10 loaders (used by the visualiser and clean-evaluation tools)
 │
 ├── experiments/                  every training, evaluation, analysis and reporting entry point
@@ -265,12 +269,14 @@ rs-uep-jscc/
 │   ├── train_sensitivity_head.py      Track A.3: LOO labels + the 2,048-MAC sensitivity head
 │   ├── train_highres.py               Track C.1 fallback: fine-tune on high-resolution crops
 │   ├── train_speech_jscc.py           S1 speech training
+│   ├── train_text_jscc.py             T1 text training (cross-entropy)
 │   ├── eval_rs_uep.py                 main packet-erasure sweep (all schemes x importance sources)
 │   ├── eval_rs_uep_oracle.py          thin wrapper of eval_rs_uep with the oracle defaults
 │   ├── eval_burst.py                  Track D.1: Gilbert-Elliott bursts, sequential vs interleaved
 │   ├── eval_digital_baseline.py       Track D.2: JPEG / JPEG2000 / WebP (+BPG) + RS on the same losses
 │   ├── eval_kodak.py                  Track C.1: Kodak 768x512
 │   ├── eval_speech_perceptual.py      S1: PESQ / STOI / WAV examples
+│   ├── eval_text_examples.py          T1: word accuracy, bits/char, example passages
 │   ├── eval_adjsccq_clean.py          clean (no-loss) reference evaluation
 │   ├── attention_vs_damage.py         attention gates vs true LOO damage (Figure 2)
 │   ├── feature_saliency.py            Track A.2: energy / L1 / variance / Taylor proxies vs LOO damage
@@ -284,13 +290,14 @@ rs-uep-jscc/
 │   ├── pipeline_core.py               shared transmit/accumulate/parallel-runner machinery
 │   ├── sensitivity.py                 LOO damage, ranking loss, MAC counter
 │   ├── model_io.py                    load checkpoints into a ModelBundle; reconstruct()
-│   ├── metrics.py                     PSNR, SSIM, MS-SSIM, LPIPS, speech SNR / SI-SDR
+│   ├── metrics.py                     PSNR, SSIM, MS-SSIM, LPIPS, speech SNR / SI-SDR, text char/word accuracy
 │   ├── stats_utils.py                 ranks, correlations, bootstrap, paired differences
 │   ├── reproducibility.py             seeding, provenance, seed statistics, test-access log
 │   ├── reporting.py                   tables, standard figures, auto-generated insights
 │   ├── plotting.py                    colour-blind-safe figure helpers
 │   ├── download_data.py               CIFAR-10/100, STL-10, Kodak downloads
 │   ├── prepare_speech_data.py         LibriSpeech download + segment cache (S1)
+│   ├── prepare_text_data.py           text8 download + window cache (T1)
 │   ├── preflight.py                   read-only environment / credentials / data checks
 │   ├── benchmark_training.py          epoch-time benchmark used to size Kaggle jobs
 │   ├── ingest_kaggle.py               pull a finished Kaggle kernel's outputs into results/
@@ -301,7 +308,9 @@ rs-uep-jscc/
 │   ├── adjsccq_identity_train.yaml    ADJSCC-Q recipe v1 (every published ADJSCC-Q model)
 │   ├── deepjsccq_identity_train.yaml  DeepJSCC-Q (G1), identical except the architecture
 │   ├── speech_adjsccq1d.yaml          S1, 1-D with attention
-│   └── speech_deepjsccq1d.yaml        S1, 1-D without attention
+│   ├── speech_deepjsccq1d.yaml        S1, 1-D without attention
+│   ├── text_adjsccq.yaml              T1, text with attention
+│   └── text_deepjsccq.yaml            T1, text without attention
 │
 ├── tests/                        pytest suite (tiny random models; no datasets needed except test_cifar10.py)
 │
@@ -327,13 +336,16 @@ Folders are numbered in reading order.
 |---|---|
 | [`01_project_definition/ORIGINAL_PROBLEM_STATEMENT_AND_CONCEPT_EXPLAINER.md`](docs/01_project_definition/ORIGINAL_PROBLEM_STATEMENT_AND_CONCEPT_EXPLAINER.md) | The original brief plus a long concept explainer of Deep JSCC, latents, RS and UEP |
 | [`02_research_plan_and_design_decisions/RESEARCH_ROADMAP_GLOBECOM_ICC_TO_TWC_TCOM.md`](docs/02_research_plan_and_design_decisions/RESEARCH_ROADMAP_GLOBECOM_ICC_TO_TWC_TCOM.md) | The research roadmap: Tracks A-E, integrity rules, success criteria |
-| [`02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md`](docs/02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md) | Every design decision for G0/G1 and S1, with the pre-registered decision thresholds |
+| [`02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md`](docs/02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md) | Every design decision for G0/G1, S1 and T1 (AD-01 to AD-30), with the pre-registered decision thresholds |
 | [`03_runbooks/MAIN_ADJSCCQ_PIPELINE_RUNBOOK_PHASES_VERIFY_TO_FINAL.md`](docs/03_runbooks/MAIN_ADJSCCQ_PIPELINE_RUNBOOK_PHASES_VERIFY_TO_FINAL.md) | Commands, outputs and interpretation of every main-pipeline phase |
 | [`03_runbooks/G1_DEEPJSCCQ_ATTENTION_ABLATION_RUNBOOK_MAC_MPS.md`](docs/03_runbooks/G1_DEEPJSCCQ_ATTENTION_ABLATION_RUNBOOK_MAC_MPS.md) | Step-by-step G1 run on an Apple-silicon Mac |
 | [`03_runbooks/S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md`](docs/03_runbooks/S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md) | Step-by-step speech study |
+| [`03_runbooks/T1_TEXT_TEXT8_STUDY_RUNBOOK_MAC_MPS.md`](docs/03_runbooks/T1_TEXT_TEXT8_STUDY_RUNBOOK_MAC_MPS.md) | Step-by-step text study (Mac MPS; Windows notes included) |
 | [`04_research_progress_log/RESEARCH_PROGRESS_LOG_PHASE0_TO_G1_AND_S1.md`](docs/04_research_progress_log/RESEARCH_PROGRESS_LOG_PHASE0_TO_G1_AND_S1.md) | Dated record of what was run, problems, fixes and decisions |
 | [`05_results_and_interpretation/ADJSCCQ_MAIN_STUDY_RESULTS_AND_INTERPRETATION.md`](docs/05_results_and_interpretation/ADJSCCQ_MAIN_STUDY_RESULTS_AND_INTERPRETATION.md) | All ADJSCC-Q results and what they mean (see Section 6 for known corrections) |
 | [`05_results_and_interpretation/G1_DEEPJSCCQ_ATTENTION_ABLATION_RESULTS_AND_INTERPRETATION.md`](docs/05_results_and_interpretation/G1_DEEPJSCCQ_ATTENTION_ABLATION_RESULTS_AND_INTERPRETATION.md) | G1 results and the pre-registered verdict |
+| [`05_results_and_interpretation/S1_SPEECH_LIBRISPEECH_STUDY_RESULTS_AND_INTERPRETATION.md`](docs/05_results_and_interpretation/S1_SPEECH_LIBRISPEECH_STUDY_RESULTS_AND_INTERPRETATION.md) | S1 training and leave-one-out results so far (test sweeps pending) |
+| [`05_results_and_interpretation/T1_TEXT_TEXT8_STUDY_RESULTS_AND_INTERPRETATION_TEMPLATE.md`](docs/05_results_and_interpretation/T1_TEXT_TEXT8_STUDY_RESULTS_AND_INTERPRETATION_TEMPLATE.md) | Template for the T1 results, same sections as S1 (to fill in after the runs) |
 | [`06_literature_review/LITERATURE_REVIEW_NOVELTY_ASSESSMENT_MUST_CITE_AND_EXPECTED_BASELINES.md`](docs/06_literature_review/LITERATURE_REVIEW_NOVELTY_ASSESSMENT_MUST_CITE_AND_EXPECTED_BASELINES.md) | Novelty assessment, must-cite list, baselines reviewers will expect |
 | [`06_literature_review/research_notes_by_topic/`](docs/06_literature_review/research_notes_by_topic/) | Six topic notes behind the review (UEP for JSCC, packet-erasure JSCC, attention as importance, classic UEP, speech, ordered latents) |
 | [`06_literature_review/reference_papers/`](docs/06_literature_review/reference_papers/) | PDF of Bourtsoulatze, Kurka & Gündüz (2019) |
@@ -395,7 +407,7 @@ python run_pipeline.py --phase g1 --train_device mps --execute           # G1 ex
 ```
 
 Phases: `verify`, `phase1` (multi-seed + Track A), `phase2` (Track B), `phase3` (Track C), `phase4` (Track D),
-`final` (test tables + report), plus the extensions `g1` and `speech`. Per-phase details and how to read the
+`final` (test tables + report), plus the extensions `g1`, `speech` and `text`. Per-phase details and how to read the
 outputs: [`docs/03_runbooks/`](docs/03_runbooks/).
 
 Unit tests: `python -m pytest tests -q` (179 passed on the last recorded run, 2026-10-18, before the G1 and

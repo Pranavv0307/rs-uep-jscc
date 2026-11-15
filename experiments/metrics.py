@@ -1,4 +1,4 @@
-"""Per-image image-quality metrics shared by the evaluation scripts."""
+"""Per-item quality metrics shared by the evaluation scripts (images, speech S1, text T1)."""
 from typing import Optional, Sequence, Tuple
 
 import torch
@@ -114,15 +114,72 @@ def si_sdr_db_per_item(x_hat: torch.Tensor, x: torch.Tensor, eps: float = 1e-10)
 
 
 def quality_db_per_item(x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
-    """The pipeline's primary per-item quality in dB: PSNR for images (unchanged), SNR for audio.
+    """The pipeline's primary per-item quality: PSNR for images (unchanged), SNR for audio,
+    character accuracy in percent for text (T1, AD-24).
 
     Stored under the existing ``psnr_db_*`` result keys so selection, reporting and
-    comparison code work for both modalities; speech result files say so in their
-    metadata (``quality_metric``).
+    comparison code work for every modality; speech and text result files say so in their
+    metadata (``quality_metric``). For text, every "dB" in a shared table or figure reads as
+    "percentage points of character accuracy".
     """
     if x.dim() == 4:
         return psnr_per_image(x_hat, x)
+    if is_text(x):
+        return char_accuracy_per_item(x_hat, x)
     return snr_db_per_item(x_hat, x)
+
+
+# --------------------------------------------------------------------------
+# Text (T1): targets are integer symbol ids (B, L); the decoder returns logits (B, V, L).
+# --------------------------------------------------------------------------
+def is_text(x: torch.Tensor) -> bool:
+    """Text targets are the only integer-valued inputs in the pipeline."""
+    return not torch.is_floating_point(x)
+
+
+def char_accuracy_per_item(logits: torch.Tensor, ids: torch.Tensor) -> torch.Tensor:
+    """Percentage of positions whose argmax symbol equals the reference (100 x (1 - Hamming CER)).
+
+    The model is non-autoregressive with a fixed length, so there are no insertions or
+    deletions: the Hamming error rate is the character error rate.
+    """
+    correct = logits.argmax(dim=1) == ids.long()
+    return 100.0 * correct.float().mean(dim=1)
+
+
+def word_accuracy_per_item(logits: torch.Tensor, ids: torch.Tensor, space_id: int = 0) -> torch.Tensor:
+    """Percentage of words (maximal runs of non-space reference symbols) reproduced without error.
+
+    Words cut by the window edges count as words; a word is correct only if every one of its
+    characters is. Spaces themselves are not scored here (they are in the character accuracy).
+    """
+    ids = ids.long()
+    wrong = logits.argmax(dim=1) != ids
+    is_space = ids == space_id
+    word_index = torch.cumsum(is_space.long(), dim=1)          # one index per word, spaces share their left word
+    letters = (~is_space).float()
+    slots = ids.shape[1] + 1
+    errors = torch.zeros(ids.shape[0], slots, device=ids.device).scatter_add_(1, word_index, wrong.float() * letters)
+    sizes = torch.zeros(ids.shape[0], slots, device=ids.device).scatter_add_(1, word_index, letters)
+    present = sizes > 0
+    good = (present & (errors == 0)).float().sum(dim=1)
+    return 100.0 * good / present.float().sum(dim=1).clamp_min(1.0)
+
+
+def bits_per_char_per_item(logits: torch.Tensor, ids: torch.Tensor) -> torch.Tensor:
+    """Mean cross-entropy of the reference symbols under the decoder's softmax, in bits per character."""
+    nats = F.cross_entropy(logits.float(), ids.long(), reduction="none").mean(dim=1)
+    return nats / torch.log(torch.tensor(2.0, device=logits.device))
+
+
+def per_item_loss(x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+    """The training loss per item: MSE for images / audio (exactly ``per_item_mse``), cross-entropy for text.
+
+    Used by the first-order Taylor importance source, which needs a differentiable loss.
+    """
+    if is_text(x):
+        return F.cross_entropy(x_hat, x.long(), reduction="none").mean(dim=1)
+    return per_item_mse(x_hat, x)
 
 
 _LPIPS = {}

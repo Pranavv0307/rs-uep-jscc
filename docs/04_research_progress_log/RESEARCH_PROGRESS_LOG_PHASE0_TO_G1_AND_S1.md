@@ -385,3 +385,47 @@ training). Run order and gates: [`../SPEECH_RUNBOOK_MAC.md`](../03_runbooks/S1_S
 ### Open decisions (owners)
 * AD-19: speech decision thresholds (proposed: the AD-09 ones), **before** the speech test sweeps.
 * AD-14 / AD-15 / AD-18: widths 16–32, 40k training segments, 3 seeds per architecture.
+
+---
+
+## T1: text study, code written (not executed) (2026-11-16)
+
+**Question.** Does sensitivity-aware UEP carry over to a *discrete* source, text, and does it depend on
+attention there? S1 found the concentration intrinsic for speech (top-4 share 43.0% with attention,
+46.6% without; worst channel 8.1 / 10.6 dB). T1 repeats the speech protocol on text8 characters with
+`adjsccq_text` (with attention) and `deepjsccq_text` (without). Both use the same 16 × 64 = 1,024-byte
+latent (2,048 characters per window, 4 bits per character), so the RS coding layer is unchanged.
+
+**Status:** code, tests and runbook written; **nothing has been run** (no tests, no download, no
+training). Run order and gates: [`T1_TEXT_TEXT8_STUDY_RUNBOOK_MAC_MPS.md`](../03_runbooks/T1_TEXT_TEXT8_STUDY_RUNBOOK_MAC_MPS.md). Decisions:
+[`ARCHITECTURE_DECISION_RECORD`](../02_research_plan_and_design_decisions/ARCHITECTURE_DECISION_RECORD_AD01_TO_AD21.md), AD-22 to AD-30. Results template:
+[`T1_TEXT_TEXT8_STUDY_RESULTS_AND_INTERPRETATION_TEMPLATE.md`](../05_results_and_interpretation/T1_TEXT_TEXT8_STUDY_RESULTS_AND_INTERPRETATION_TEMPLATE.md).
+
+### What was done
+* **Models:** `models/text_jscc.py`, registered as `adjsccq_text` / `deepjsccq_text`: a 27 → 32 character
+  embedding, then the speech backbone design (strides 4,2,2,2; widths 32–64), per-character logits out.
+  Configs: `configs/text_{adjsccq,deepjsccq}.yaml`, identical except `model.arch`.
+* **Data:** `data/text.py` and `experiments/prepare_text_data.py`. text8, standard split (train 0–90M,
+  val 90–95M, test 95–100M characters), non-overlapping 2,048-character windows, 40,000 / 2,441 / 2,441,
+  seeded, uint8 cache plus a manifest with SHA-256 of the array and of the source file.
+* **Training:** `experiments/train_text_jscc.py`. Recipe v1 with a cross-entropy loss (AD-25); the image
+  trainer's checkpoint format and `metrics.json` keys; quality = per-window character accuracy (%) in the
+  `psnr_db_*` fields, plus word accuracy and bits per character.
+* **Readable check:** `experiments/eval_text_examples.py`. Character / word accuracy and bits/char on 500
+  test windows with the sweep's exact losses, plus example passages with errors in upper case (the text
+  counterpart of PESQ/STOI and the WAV examples).
+* **Shared code:** integer inputs are text. New metric helpers (`char_accuracy_per_item`,
+  `word_accuracy_per_item`, `bits_per_char_per_item`, `per_item_loss`); `CellAccumulator` reports
+  `word_acc_mean`; the sweep table labels "Char acc (%)" / "Word acc (%)"; the Taylor source uses the
+  training loss; `tensor_modality()` replaces the 3-D check in `eval_rs_uep`; `text8` in
+  `load_eval_tensor` / `is_official_test`; registry reads `strides`, `vocab_size`, `embed_dim`. The image
+  and speech paths are unchanged (unit-tested).
+* **Orchestrator:** `run_pipeline.py` extension phase `text` (comparison uses `TEXT_DECISION_RULE`).
+* **Tests:** `tests/test_text.py` (synthetic corpus, one-epoch training run); `tests/test_phase_modules.py`
+  gains the new modules in its import list.
+
+### Open decisions (owners)
+* AD-28: text decision thresholds (proposed: C2 ≥ +2.0 pp of character accuracy, FLAT margin 0.5 pp;
+  C1 and C3 unchanged), **before** the text test sweeps.
+* AD-22 / AD-23 / AD-25 / AD-26: widths 32–64 and 2,048-character windows, 40k training windows,
+  cross-entropy loss, 3 seeds per architecture.

@@ -56,7 +56,7 @@ class ModelBundle:
 
     @property
     def modality(self) -> str:
-        """``image`` (inputs (B, 3, H, W)) or ``speech`` (inputs (B, 1, L))."""
+        """``image`` (inputs (B, 3, H, W)), ``speech`` (inputs (B, 1, L)) or ``text`` (integer ids (B, L))."""
         return model_modality(self.config)
 
     @property
@@ -72,6 +72,8 @@ class ModelBundle:
         """A zero input of the shape the encoder expects (e.g. for counting MACs)."""
         if self.modality == "speech":
             return torch.zeros(batch, 1, self.encoder.segment_length)
+        if self.modality == "text":
+            return torch.zeros(batch, self.encoder.segment_length, dtype=torch.long)
         return torch.zeros(batch, 3, self.image_size, self.image_size)
 
     @property

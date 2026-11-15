@@ -14,7 +14,9 @@ and ``decoder(z, snr_db, spatial_hw=...)``. ``tests/test_deepjsccq.py`` and
 
 Each entry also names its *modality* (``image``: inputs ``(B, 3, H, W)``, config keys
 ``k_over_n`` / ``image_size``; ``speech``: inputs ``(B, 1, L)``, config keys
-``segment_length`` / ``latent_channels`` / ``widths``).
+``segment_length`` / ``latent_channels`` / ``widths``; ``text`` (T1): integer symbol ids
+``(B, L)``, decoder output = logits ``(B, V, L)``, config keys ``segment_length`` /
+``latent_channels`` / ``widths`` / ``strides`` / ``vocab_size`` / ``embed_dim``).
 """
 from typing import NamedTuple, Optional, Tuple
 
@@ -30,6 +32,8 @@ from models.speech_jscc import (
     SpeechJSCCQDecoder,
     SpeechJSCCQEncoder,
 )
+from models import text_jscc
+from models.text_jscc import TextJSCCQDecoder, TextJSCCQEncoder
 
 DEFAULT_ARCH = "adjsccq"
 
@@ -37,7 +41,7 @@ DEFAULT_ARCH = "adjsccq"
 class ArchSpec(NamedTuple):
     encoder: type
     decoder: type
-    modality: str            # "image" or "speech"
+    modality: str            # "image", "speech" or "text"
     options: dict            # extra constructor arguments shared by encoder and decoder
 
 
@@ -46,6 +50,8 @@ ARCHITECTURES = {
     "deepjsccq": ArchSpec(DeepJSCCQEncoder, DeepJSCCQDecoder, "image", {}),  # G1: no attention
     "adjsccq1d": ArchSpec(SpeechJSCCQEncoder, SpeechJSCCQDecoder, "speech", {"attention": True}),    # S1
     "deepjsccq1d": ArchSpec(SpeechJSCCQEncoder, SpeechJSCCQDecoder, "speech", {"attention": False}),  # S1
+    "adjsccq_text": ArchSpec(TextJSCCQEncoder, TextJSCCQDecoder, "text", {"attention": True}),        # T1
+    "deepjsccq_text": ArchSpec(TextJSCCQEncoder, TextJSCCQDecoder, "text", {"attention": False}),     # T1
 }
 
 
@@ -79,6 +85,18 @@ def build_jscc(cfg: dict, device: Optional[torch.device] = None) -> Tuple[nn.Mod
     if spec.modality == "image":
         encoder = spec.encoder(k_over_n=model_cfg["k_over_n"], image_size=model_cfg["image_size"], **quantizer_args)
         decoder = spec.decoder(k=encoder.k, image_size=model_cfg["image_size"])
+    elif spec.modality == "text":
+        geometry = dict(
+            segment_length=int(model_cfg.get("segment_length", text_jscc.DEFAULT_SEGMENT_LENGTH)),
+            latent_channels=int(model_cfg.get("latent_channels", text_jscc.DEFAULT_LATENT_CHANNELS)),
+            widths=tuple(model_cfg.get("widths", text_jscc.DEFAULT_WIDTHS)),
+            strides=tuple(model_cfg.get("strides", text_jscc.DEFAULT_STRIDES)),
+            vocab_size=int(model_cfg.get("vocab_size", text_jscc.DEFAULT_VOCAB_SIZE)),
+            embed_dim=int(model_cfg.get("embed_dim", text_jscc.DEFAULT_EMBED_DIM)),
+            **spec.options,
+        )
+        encoder = spec.encoder(**geometry, **quantizer_args)
+        decoder = spec.decoder(**geometry)
     else:
         geometry = dict(
             segment_length=int(model_cfg.get("segment_length", DEFAULT_SEGMENT_LENGTH)),

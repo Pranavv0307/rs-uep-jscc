@@ -9,7 +9,9 @@ Scope so far:
 * **G0:** make the pipeline model-agnostic.
 * **G1:** DeepJSCC-Q, the attention ablation. How to run: [`G1_RUNBOOK_MAC.md`](../03_runbooks/G1_DEEPJSCCQ_ATTENTION_ABLATION_RUNBOOK_MAC_MPS.md).
 * **S1:** the speech study, LibriSpeech with and without attention (AD-14 to AD-21). How to run:
-  [`SPEECH_RUNBOOK_MAC.md`](../03_runbooks/S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md).
+  [`S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md`](../03_runbooks/S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md).
+* **T1:** the text study, text8 characters with and without attention (AD-22 to AD-30). How to run:
+  [`T1_TEXT_TEXT8_STUDY_RUNBOOK_MAC_MPS.md`](../03_runbooks/T1_TEXT_TEXT8_STUDY_RUNBOOK_MAC_MPS.md).
 
 | ID | Decision | Status |
 |---|---|---|
@@ -34,6 +36,15 @@ Scope so far:
 | AD-19 | Speech decision rule: the AD-09 thresholds, frozen before the speech test sweeps | **PENDING** |
 | AD-20 | Shared code made modality-aware; image path bit-identical | Accepted (S1) |
 | AD-21 | Out of scope for S1 | Accepted |
+| AD-22 | Text models: character-level port of the speech backbone, with and without attention; supersedes AD-21 "Text" | Accepted (T1), **confirm widths** |
+| AD-23 | Text data: text8, standard 90M/5M/5M split, 2,048-character windows | Accepted (T1), **confirm size** |
+| AD-24 | Text quality metric: character accuracy (%) in the `psnr_db_*` fields; word accuracy instead of SSIM | Accepted (T1) |
+| AD-25 | Text training loss: cross-entropy instead of MSE (the only recipe change) | Accepted (T1), **confirm** |
+| AD-26 | Text protocol: recipe v1, 3 seeds per architecture, speech protocol repeated | Accepted (T1), **confirm seeds** |
+| AD-27 | Readable examples and bits/char instead of PESQ / STOI | Accepted (T1) |
+| AD-28 | Text decision rule: AD-09 structure, thresholds re-expressed in percentage points | **PENDING** |
+| AD-29 | Shared code: integer inputs mean text; image and speech paths bit-identical | Accepted (T1) |
+| AD-30 | Out of scope for T1 | Accepted |
 
 ---
 
@@ -256,7 +267,7 @@ and renaming would break their reproducibility.
 
 Question: does sensitivity-aware UEP carry over from images to speech, and in speech, does it
 depend on attention? Both speech models are trained and evaluated with the image protocol, so
-modality and attention are varied one at a time. How to run: [`SPEECH_RUNBOOK_MAC.md`](../03_runbooks/S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md).
+modality and attention are varied one at a time. How to run: [`S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md`](../03_runbooks/S1_SPEECH_LIBRISPEECH_STUDY_RUNBOOK_MAC_MPS.md).
 
 ## AD-14: speech models; 1-D port of the image backbone, with and without attention (S1)
 
@@ -417,3 +428,206 @@ ratios in both modalities (AD-16).
 * **Channels.** No AWGN or SNR-adaptive training, as for the images.
 * **Platform.** No Kaggle kernels; the Mac/MPS route was requested.
 * **Bursts.** No speech burst study yet. `eval_burst` would need the same `--dataset` plumbing.
+
+---
+
+# Text study (T1)
+
+Question: does sensitivity-aware UEP carry over to a **discrete** source, text, and does it depend on
+attention there? S1 showed that the concentration of channel sensitivity is not an artefact of attention
+for a continuous 1-D signal. T1 asks the same of categorical symbols, where the reconstruction is a
+classification per position instead of a regression. Both text models are trained and evaluated with the
+speech protocol, so modality and attention are again varied one at a time. How to run:
+[`T1_TEXT_TEXT8_STUDY_RUNBOOK_MAC_MPS.md`](../03_runbooks/T1_TEXT_TEXT8_STUDY_RUNBOOK_MAC_MPS.md).
+
+## AD-22: text models; character-level port of the speech backbone, with and without attention (T1)
+
+**Date:** 2026-11-16. **Status:** accepted; owners to confirm the widths.
+
+**Supersedes** the "Text" item of AD-21. AD-21 deferred text because variable-length, token-level
+latents do not fit the fixed channels × symbols layout. Fixed-length **character windows** remove that
+obstacle: every window has the same length, so every latent has the same 16 × 64 shape.
+
+**Decision.** `models/text_jscc.py` defines two registered architectures that share one code path:
+
+| | `adjsccq_text` | `deepjsccq_text` |
+|---|---|---|
+| Counterparts | ADJSCC-Q, `adjsccq1d` | DeepJSCC-Q (G1), `deepjsccq1d` |
+| AF attention after every layer | yes (unmodified `AFModule` on a `(B, C, L, 1)` view) | no |
+
+* **Input:** a window of 2,048 text8 characters as integer ids (27 symbols).
+* **Front end:** `nn.Embedding(27, 32)`. This is the only layer without a speech counterpart; it turns
+  symbols into vectors so the rest of the network is the speech design.
+* **Encoder:** 5 Conv1d layers (strides 4, 2, 2, 2 with kernel 2s + 1; then kernel 5, stride 1), widths
+  32, 64, 64, 64, 16, PReLU, then the same power normalisation and the same 256-level quantiser as every
+  other model.
+* **Latent:** 16 channels × 64 steps = **1,024 bytes per window = 4 bits per character**: again the CIFAR
+  and LibriSpeech layout.
+* **Decoder:** mirrors the encoder (ConvTranspose1d, kernel 2s, stride s, padding s/2 = ×s exactly). It
+  outputs **logits** `(B, 27, L)`, and the reconstruction is their argmax. There is no output non-linearity
+  (the speech model's `tanh` has no role here).
+* Strides are a config key (`model.strides`), so a different rate keeps the 16 × 64 latent: for example
+  4,096-character windows with strides 4, 4, 2, 2 = 2 bits per character.
+
+**Why these sizes.** The speech widths (16–32) are tuned for one input channel. A 32-dimensional
+embedding is a 32-channel input, so the widths are doubled (32–64). That puts the model at about
+21M MACs per window, about 1.3× the speech model, which keeps six training runs feasible on one laptop.
+4 bits per character is below the 4.75 bits of a context-free 27-symbol code, so the model has to use
+context to do well, but leaves room for high accuracy. That keeps "clean" reconstructions readable, so
+erasure damage is easy to see.
+
+**Alternatives rejected.**
+* *Sub-word tokens (BPE) with a Transformer.* Variable token counts per window, and a vocabulary of
+  thousands makes a non-autoregressive decoder far harder. It changes too much at once.
+* *A pretrained language model as the decoder.* An uncontrolled, very strong prior; damage would then
+  measure the LM, not the latent.
+* *An autoregressive decoder.* A single erased channel would cascade through the generation, so
+  leave-one-out damage would no longer be a per-channel property. It is also slow for the
+  17-decodes-per-item LOO and sweep grid.
+
+**Risk.** A small non-autoregressive conv autoencoder may stay well short of perfect accuracy. As for
+speech, the study is about the *relative* behaviour of UEP. The runbook gates (step 5) say when to raise
+it.
+
+## AD-23: text data; text8, standard 90M / 5M / 5M split, 2,048-character windows (T1)
+
+**Status:** accepted; owners to confirm the dataset size.
+
+**Decision** (`data/text.py`, `experiments/prepare_text_data.py`).
+
+* **Corpus:** text8 (first 10^8 bytes of a 2006 English Wikipedia dump, cleaned to `a-z` and space). It is
+  the standard character-level benchmark, a single 31 MB download, and has no markup to clean.
+* **Splits:** the standard contiguous split used across the character-level language-modelling literature:
+  train = characters [0, 90M), val = [90M, 95M), test = [95M, 100M). The regions are disjoint stretches of
+  text. Only the test region counts as the held-out test split (`is_official_test`); every access is logged.
+* **Windows:** non-overlapping 2,048-character windows aligned to the start of each region (remainder
+  dropped), shuffled (seeded) and capped.
+* **Sizes:** train **40,000** of 43,945 windows (≈ 82M characters; mirrors the 40k of CIFAR-10 and
+  LibriSpeech); val and test **all 2,441** windows each (≈ 5M characters each).
+* **Cache:** uint8 `.npy` plus a JSON manifest with every window offset, the array's SHA-256 and the
+  source file's SHA-256. The loader checks the length (10^8) and the alphabet; the source file's hash is
+  recorded rather than hard-coded, because it could not be verified here.
+
+**Why 2,441 and not 4,000 evaluation windows.** That is every non-overlapping window of the standard 5M
+region. Overlapping windows would add correlated items, not information. Statistics are paired over
+channel seeds as everywhere else; 2,441 windows are about 5M characters.
+
+## AD-24: text quality metric; character accuracy (%) in the `psnr_db_*` fields, word accuracy instead of SSIM (T1)
+
+**Decision.**
+* `experiments/metrics.quality_db_per_item` returns, for integer targets, the per-window **character
+  accuracy** = 100 × (1 − Hamming error rate). The decoder is non-autoregressive with a fixed length, so
+  there are no insertions or deletions and the Hamming rate is the character error rate (CER).
+* Results keep the existing `psnr_db_*` keys, so selection, reporting and the comparison work
+  unchanged. Every text result file records `quality_metric`, and the sweep tables label the columns
+  "Char acc (%)" and "Word acc (%)".
+* Damages and gains are therefore **percentage points (pp)**. Shared figure and table labels that say
+  "dB" (multiseed bands, compare tables, paired-gain tables) read as pp for text. They were not renamed,
+  to keep the image path byte-identical; the runbook says so wherever it matters.
+* The secondary metric is **word accuracy** (`word_acc_mean`): the share of words whose characters are all
+  right. The trainer also records **bits per character** (cross-entropy of the true text under the
+  decoder's softmax), a smooth confidence measure.
+
+**Why accuracy and not a dB quantity.** A dB form exists (10 log10 of the ratio of error counts, the
+analogue of SNR), but it is undefined when a window has no errors, which a good model often achieves. It
+is also unfamiliar to text readers. Accuracy is bounded, interpretable ("losing channel 7 costs 23 pp of
+characters") and standard.
+
+**Consequence.** Unlike S1 (AD-16), text damages are **not** in the same unit as image and speech
+damages. Two quantities stay directly comparable across all three modalities: the **top-4 share**
+(a ratio of damages) and the **random / oracle gain ratio** (C3). The decision thresholds in pp are
+set separately (AD-28).
+
+## AD-25: text training loss; cross-entropy instead of MSE (the only recipe change) (T1)
+
+**Status:** accepted; owners to confirm.
+
+**Decision.** The text trainer (`experiments/train_text_jscc.py`) uses recipe v1 unchanged (Adam 1e-3,
+constant, no clipping, σ 1 → 0.05 over 50 of 60 epochs, calibration on the first batch, best-validation
+checkpoint) except for the loss: **cross-entropy** of the per-position logits instead of MSE.
+
+**Why.** MSE is the maximum-likelihood loss for a Gaussian continuous output; cross-entropy is the
+maximum-likelihood loss for a categorical output. So this is the same principle, not a tuned choice.
+MSE on one-hot vectors would also train, but it is a non-standard choice that a reviewer would question.
+
+**Also changed for consistency:** the Taylor importance source uses the training loss, so for text its
+gradient is that of the cross-entropy (`metrics.per_item_loss`). For images and speech, `per_item_loss` is
+exactly the old `per_item_mse`.
+
+## AD-26: text protocol; recipe v1 (with AD-25), 3 seeds per architecture, speech protocol repeated (T1)
+
+**Status:** accepted; owners to confirm the number of seeds.
+
+**Decision.** The `text` phase of `run_pipeline.py` is `speech` with the names changed:
+* **Seeds:** 42, 100 and 7 for each architecture, giving 6 models. A non-converged run (best epoch < 50)
+  is kept and named, and seed 13 is added for that architecture, as in S1.
+* **Analysis on seed 42:** A.2 proxies, A.3 head, and a validation sweep on all 7 schemes
+  (3 channel seeds × 2,441 val windows), then scheme selection.
+* **Other seeds:** they reuse that selection.
+* **Test sweeps:** 5 channel seeds × 2,441 test windows, with a random control and `no_rs`.
+* **Attention:** `attention_vs_damage` runs on `adjsccq_text`.
+* **Comparison:** `compare_architectures` with families `adjsccq_text` (reference) and
+  `deepjsccq_text`, using the AD-28 thresholds.
+* **Hardware:** all six models on the same machine and device (MPS or CUDA). No anchor is needed within T1.
+
+## AD-27: readable examples and bits/char instead of PESQ / STOI (T1)
+
+**Decision.** `experiments/eval_text_examples.py` replays the sweep's exact losses on a fixed subset
+(the first 500 test windows, channel seed 0, loss 0 / 0.3 / 0.35 / 0.4 / 0.5, methods `no_rs`, `uniform`
+and each source's validation-selected high-loss scheme). It reports character accuracy, word accuracy
+and bits per character, and writes example passages with every wrong character in upper case.
+
+**Why.** Text has no perceptual metric with the standing of PESQ. Word accuracy is the closest
+"does a reader notice" measure and is cheap enough for the full sweep, so it is already there. This
+script adds what a reader can judge directly: the received text.
+
+## AD-28: text decision rule; AD-09 structure, thresholds re-expressed in percentage points (T1)
+
+**Status:** **PENDING**: to be confirmed before any `text_final_*` step runs.
+
+**Proposal.**
+* **C1:** family mean top-4 share ≥ 0.40. Unit-free, so identical to AD-09 and AD-19.
+* **C2:** every model's oracle gain at 40% loss ≥ **+2.0 pp** of character accuracy, with the 95%
+  interval above zero.
+* **C3:** random-order gain < 0.5 × oracle gain (mean over loss ≥ 0.35). Unit-free, identical.
+* **FLAT:** top-4 share < 0.30 and oracle within **0.5 pp** of random.
+
+Passed as `--min_gain_db 2.0 --equivalence_margin_db 0.5` (`TEXT_DECISION_RULE` in `run_pipeline.py`).
+
+**Why +2.0 pp.** One extra correct character in every 50. At typical high-loss accuracies that is
+roughly a 10% relative change in word accuracy, because a ~5.5-character word needs every letter right.
+A reader notices that, and it is larger than the run-to-run noise expected from 5 seeds × 2,441
+windows. It plays the role 1.5 dB plays for images. It must be fixed **before** any text test sweep is
+seen, like AD-09.
+
+**Reading.** The same as AD-19: `adjsccq_text` met → UEP carries over to text; `deepjsccq_text` also
+met → without attention; together with G1 and S1 → a 3 × 2 (modality × attention) picture.
+
+## AD-29: shared code; integer inputs mean text; image and speech paths bit-identical (T1)
+
+**Decision.**
+* **Metrics:** `experiments/metrics.py` gains `is_text`, `char_accuracy_per_item`,
+  `word_accuracy_per_item`, `bits_per_char_per_item` and `per_item_loss`. `quality_db_per_item` keeps its
+  image and speech branches unchanged and sends integer targets to character accuracy (unit-tested).
+* **Pipeline:** `CellAccumulator` writes `word_acc_mean` instead of `ssim_mean` for text, and
+  `SUMMARY_METRICS` includes it. The Taylor source uses `per_item_loss`.
+* **Reporting:** the sweep table labels its columns "Char acc (%)" / "Word acc (%)" when rows carry
+  `word_acc_mean`.
+* **Bundle:** `ModelBundle.example_input()` returns a long zero tensor for text.
+* **Datasets:** `data.datasets` gains `TEXT_DATASETS = ("text8",)`, `tensor_modality()`, and dispatches
+  `text8` to `data/text.py`. `text8`/`test` counts as an official test split.
+* **Mismatch check:** `eval_rs_uep` compares `tensor_modality(items)` with the checkpoint's modality. The
+  old check (3-D or not) could not tell text from images.
+* **Registry:** two `text` entries; `build_jscc` reads `strides`, `vocab_size` and `embed_dim` for them.
+* **Orchestrator:** a `text` extension phase (not part of `--phase all`).
+
+## AD-30: out of scope for T1
+
+* **Sub-word / byte-level general text, other languages.** text8 only. A byte-level variant (256 symbols,
+  any UTF-8 text) is a natural follow-up.
+* **Semantic metrics** (BLEU, BERTScore, sentence-embedding similarity). Character and word accuracy are
+  the metrics of record. A semantic metric on the example subset is a cheap later addition.
+* **Language-model post-correction** at the receiver. It would mix a strong prior into the damage measure.
+* **Rate sweep** (1,024 / 4,096-character windows). Supported by `model.strides` but not run.
+* **Bursts.** `eval_burst` has no `--dataset` plumbing yet, as for speech.
+* **Training losses / channels.** No AWGN or SNR-adaptive training, as for images and speech.
