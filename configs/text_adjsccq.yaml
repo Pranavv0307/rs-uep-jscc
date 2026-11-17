@@ -1,0 +1,41 @@
+# T1 text study: 1-D ADJSCC-Q on characters: AF attention after every layer (text counterpart of ADJSCC-Q).
+# configs/text_adjsccq.yaml and configs/text_deepjsccq.yaml differ only in model.arch.
+# Recipe v1 and quantiser identical to the image / speech models, except the loss: cross-entropy
+# on per-character logits instead of MSE (documentations/ARCHITECTURE_DECISIONS.md, AD-22 to AD-28).
+seed: 42
+
+data:
+  dataset: text8              # window cache from: python -m experiments.prepare_text_data --download --build
+  batch_size: 64
+  num_workers: 2
+  max_train: null             # null = all 40,000 training windows
+
+model:
+  arch: adjsccq_text
+  segment_length: 2048        # characters per window (= one transmission unit)
+  latent_channels: 16         # 16 channels x 64 steps = 1024 bytes = 4 bits/char, the CIFAR / speech latent layout
+  strides: [4, 2, 2, 2]       # total stride 32: 2048 / 32 = 64 latent steps
+  widths: [32, 64, 64, 64]    # hidden widths (AD-22)
+  vocab_size: 27              # text8: space + a-z
+  embed_dim: 32
+
+quantizer:
+  num_levels: 256
+  init_range: [-3.0, 3.0]
+  calibrate_low_pct: 1.0
+  calibrate_high_pct: 99.0
+  sigma_start: 1.0
+  sigma_end: 0.05
+  sigma_anneal_epochs: 50
+
+# Fixed nominal value passed to the AF gates (as for the image / speech models); ignored without attention.
+af_conditioning:
+  nominal_snr_db: 10.0
+
+train:
+  lr: 0.001
+  epochs: 60
+  log_every: 100
+
+wandb:
+  project: rs-uep-jscc

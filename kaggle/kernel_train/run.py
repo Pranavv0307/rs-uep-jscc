@@ -5,7 +5,7 @@ Weights & Biases is forced offline here, and the run folders are downloaded with
 outputs and synced from the owner's machine (``wandb sync``), so the W&B key never
 leaves that machine.
 
-Edit JOB below, push the kernel, then fetch outputs with kaggle/kg.py (see kaggle/README.md).
+Edit JOB below, push the kernel, then fetch outputs with kaggle/kg.py (see the "Kaggle" section of the root README.md).
 Every step writes its own log; ``status.json`` is refreshed after each step, so partial
 results survive a failure or a session timeout.
 """

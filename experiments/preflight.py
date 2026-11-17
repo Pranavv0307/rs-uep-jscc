@@ -193,7 +193,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--data_dir", default="data")
     parser.add_argument("--need", default="", help="comma list of optional datasets to REQUIRE: cifar100,kodak")
-    parser.add_argument("--seed42_dir", default="checkpoints/train_split_adjsccq")
+    parser.add_argument("--seed42_dir", default="results/gpu/models/seed42")
     parser.add_argument("--wandb_test", action="store_true")
     parser.add_argument("--wandb_project", default="rs-uep-jscc")
     parser.add_argument("--kaggle_test", action="store_true")

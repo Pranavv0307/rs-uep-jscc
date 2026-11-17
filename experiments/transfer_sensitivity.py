@@ -22,8 +22,8 @@ Decision rule (roadmap): r_s >= 0.85 and top-4 preserved -> hard-code the static
 table, side-info = 0 B; r_s <= 0.50 -> sensitivity is content dependent, go to
 the online predictor (A.2 / A.3); in between -> report as partial.
 
-    python -m experiments.transfer_sensitivity --checkpoint checkpoints/train_split_adjsccq/best_val.pth \\
-        --reference_ranking checkpoints/train_split_adjsccq/oracle_ranking.json \\
+    python -m experiments.transfer_sensitivity --checkpoint results/gpu/models/seed42/best_val.pth \\
+        --reference_ranking results/gpu/models/seed42/oracle_ranking.json \\
         --targets cifar100 --max_images 2000 --output_dir results/phase1/transfer
 """
 import argparse

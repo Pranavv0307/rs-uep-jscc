@@ -24,7 +24,7 @@ The index-aligned matrix is still plotted, as evidence that indices do permute.
 Example::
 
     python -m experiments.multiseed_analysis \\
-        --run seed42=checkpoints/train_split_adjsccq --run seed100=results/models/seed100 \\
+        --run seed42=results/gpu/models/seed42 --run seed100=results/models/seed100 \\
         --run seed2024=results/models/seed2024 --output_dir results/phase1/multiseed
 """
 import argparse
